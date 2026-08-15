@@ -1,0 +1,215 @@
+/* ==========================================================================
+   1. ПЕРЕМЕННЫЕ И БАЗОВЫЕ СТИЛИ (RESET)
+   ========================================================================== */
+:root {
+    --primary-blue: #3b5998;     
+    --banner-bg: #99bbe8;        
+    --border-color: #b5b8c8;     
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #cedeff;   
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;            
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 11px;
+}
+
+.app-layout {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+/* ==========================================================================
+   2. ЛЕВАЯ УЗКАЯ ПАНЕЛЬ (40px) — BANER-PANEL И СПРАЙТЫ
+   ========================================================================== */
+.baner-panel {
+    background-color: var(--banner-bg);
+    width: 40px;
+    min-width: 40px;
+    height: 100vh;
+    flex-shrink: 0;
+    z-index: 20;
+    border-right: 1px solid #729ad2; 
+}
+
+.mainMenu {
+    width: 100%;
+    height: 100%;
+    position: relative; 
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-wrapper {
+    margin-bottom: 15px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-link {
+    background-image: url('img/hub-blue.png') !important;
+    background-size: 26px 26px !important;
+    background-repeat: no-repeat !important;
+    background-position: 7px 0 !important;
+    position: absolute;
+    top: 55px;
+    left: 0;
+    display: block;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+}
+
+.x-tab-strip {
+    list-style: none;
+    margin-top: 110px; 
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Базовый стиль элементов списка табов */
+.x-tab-strip li {
+    width: 40px;
+    height: 42px;
+    margin-bottom: 8px;
+    background-image: url('img/menuTabsIcons.png') !important;
+    background-repeat: no-repeat;
+    background-position-x: -40px; /* Дефолтное состояние (правая колонка спрайта) */
+    cursor: pointer;
+}
+
+/* Вертикальные смещения по оси Y для CSS-спрайтов */
+.btn-1 { background-position-y: -126px; }
+.btn-2 { background-position-y: -84px; }
+.btn-3 { background-position-y: 0px; }
+.btn-4 { background-position-y: -42px; }
+
+/* Активное состояние таба (переключение на левую колонку спрайта) */
+.x-tab-strip li.active {
+    background-position-x: 0px !important;
+}
+
+/* ==========================================================================
+   3. ВТОРАЯ ВЕРТИКАЛЬНАЯ ПАНЕЛЬ (MENU-PANEL)
+   ========================================================================== */
+.menu-panel {
+    background-color: #ffffff;
+    width: 250px;
+    min-width: 250px;
+    flex-basis: 250px; 
+    height: 100vh;
+    border-right: 1px solid var(--border-color);
+    flex-shrink: 0;   
+    flex-grow: 0;     
+}
+
+/* ==========================================================================
+   4. ИНТЕРАКТИВНЫЙ РАЗДЕЛИТЕЛЬ И ФАНТОМНАЯ ЛИНИЯ (SPACER)
+   ========================================================================== */
+.spacer {
+    background-color: transparent;
+    width: 5px;
+    min-width: 5px;
+    height: 100vh;
+    cursor: col-resize;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+    z-index: 30;
+    position: relative; 
+}
+
+.phantom-line {
+    display: none; 
+    position: absolute;
+    top: 0;
+    left: 2px;     
+    width: 2px;
+    height: 100vh;
+    background-color: #444444;
+    opacity: 0.6;
+    pointer-events: none; 
+}
+
+/* ==========================================================================
+   5. ПРАВАЯ ОСНОВНАЯ ЧАСТЬ И ВЕРХНЯЯ ПАНЕЛЬ (UPPER-PANEL)
+   ========================================================================== */
+.main-container {
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.upper-panel {
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    height: 43px;
+    min-height: 43px;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.content-area {
+    flex: 1;
+    background-color: transparent;
+}
+
+/* ==========================================================================
+   ВСПОМОГАТЕЛЬНЫЕ СТИЛИ ДЛЯ ПРОЦЕССА РЕСАЙЗА
+   ========================================================================== */
+body.is-resizing {
+    cursor: col-resize !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+body.is-resizing #phantom {
+    display: block;
+}
+
+body.is-resizing .app-layout * {
+    pointer-events: none !important;
+}
+/* Управление видимостью подпанелей меню */
+.menu-sub-panel.hide {
+    display: none !important;
+}
+.menu-sub-panel.active {
+    display: block;
+}
+/* Простые стили для дерева меню внутри списков */
+.menu-tree {
+    list-style-type: none;
+    padding-left: 15px;
+    margin: 0;
+    font-family: sans-serif;
+}
+
+.menu-tree li {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #444;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+
+.menu-tree li:hover {
+    background-color: #e4e7ed;
+    color: #000;
+}

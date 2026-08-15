@@ -1,0 +1,31 @@
+kerio.lib.k_translation = {
+	"wlibLoginPage": {
+		"%1 %2 and %3":"%1 %2 och %3",
+		"%1 %2 to %3":"%1 %2 till %3",
+		"%1Confirm the certificate%2 for an automated login to other Kerio applications.":"%1Bekräfta certifikat%2 för automatisk inloggning till andra Kerio-program.",
+		"%1Confirm the certificate%2 to achieve seamless login into other Kerio applications.":"%1Bekräfta certifikat%2 för sömlös inloggning till andra Kerio-program.",
+		"Access denied by administrator.":"Åtkomst nekad av administratör.",
+		"Back to Samepage.io":"Gå tillbaka till Samepage.io",
+		"Create an Account":"Skapa konto",
+		"E-mail":"E-post",
+		"Forgot password?":"Glömt lösenordet?",
+		"Incorrect username or password":"Felaktigt användarnamn eller lösenord",
+		"Install SSL certificate":"Installera SSL-certifikat",
+		"Keep me logged in":"Håll mig inloggad",
+		"Login":"Loggin",
+		"Password":"Lösenord",
+		"Please login again.":"Var god logga in igen.",
+		"Please use PC or Mac.":"Använd PC eller Mac.",
+		"Please use one of the supported browsers:":"Välj en av de stödda webbläsarna:",
+		"Please use the recommended resolution of %1x%2 or higher.":"Använd rekommenderad upplösning %1x%2 eller högre.",
+		"Standard web client":"Standardwebbklient",
+		"Supported browsers:":"Stödda webbläsare:",
+		"The functionality is very limited. Using PC or Mac is recommended instead.":"Mycket begränsade funktioner. Det rekommenderas att använda PC eller Mac istället.",
+		"Username":"Användarnamn",
+		"Your browser or its version is not supported.":"Din webbläsare eller versionen stöds inte.",
+		"Your device is not supported.":"Din enhet stöds inte.",
+		"Your display resolution is too low.":"Skärmens upplösning är för låg.",
+		"Your session has expired.":"Din session har avslutats.",
+		"and newer":"och senare"
+	}
+};

@@ -1,0 +1,31 @@
+kerio.lib.k_translation = {
+	"wlibLoginPage": {
+		"%1 %2 and %3":"%1 %2 i %3",
+		"%1 %2 to %3":"%1 %2 do %3",
+		"%1Confirm the certificate%2 for an automated login to other Kerio applications.":"%1Potvrdite certifikat%2 za automatsku prijavu u druge Kerio aplikacije.",
+		"%1Confirm the certificate%2 to achieve seamless login into other Kerio applications.":"%1Potvrdite certifikat%2 za neprimjetnu prijavu u druge Kerio aplikacije.",
+		"Access denied by administrator.":"Administrator je odbio pristup.",
+		"Back to Samepage.io":"Natrag na istu stranicu",
+		"Create an Account":"Stvori račun",
+		"E-mail":"E-pošta",
+		"Forgot password?":"Zaboravili ste lozinku?",
+		"Incorrect username or password":"Neispravno korisničko ime ili lozinka",
+		"Install SSL certificate":"Instaliraj SSL certifikat",
+		"Keep me logged in":"Zadrži me prijavljenog",
+		"Login":"Prijava",
+		"Password":"Lozinka",
+		"Please login again.":"Molim prijavite se ponovno.",
+		"Please use PC or Mac.":"Molimo da koristite PC ili Mac.",
+		"Please use one of the supported browsers:":"Molimo koristite jedan od podržanih preglednika:",
+		"Please use the recommended resolution of %1x%2 or higher.":"Molimo koristite preporučenu razlučivost od %1x%2 ili višu.",
+		"Standard web client":"Standardni web-klijent",
+		"Supported browsers:":"Podržani preglednici:",
+		"The functionality is very limited. Using PC or Mac is recommended instead.":"Funkcionalnost je vrlo ograničena. Umjesto toga preporučamo da koristite PC ili Mac.",
+		"Username":"Korisničko ime",
+		"Your browser or its version is not supported.":"Nije podržan vaš preglednik ili njegova verzija.",
+		"Your device is not supported.":"Vaš uređaj nije podržan.",
+		"Your display resolution is too low.":"Razlučivost ekrana vam je preniska.",
+		"Your session has expired.":"Vaša sesija je istekla.",
+		"and newer":"i novije"
+	}
+};

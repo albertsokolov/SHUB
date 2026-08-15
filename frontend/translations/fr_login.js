@@ -1,0 +1,31 @@
+kerio.lib.k_translation = {
+	"wlibLoginPage": {
+		"%1 %2 and %3":"%1 %2 et %3",
+		"%1 %2 to %3":"%1 %2 à %3",
+		"%1Confirm the certificate%2 for an automated login to other Kerio applications.":"%1Confirmer le certificat%2 pour un raccordement automatique aux autres applications Kerio.",
+		"%1Confirm the certificate%2 to achieve seamless login into other Kerio applications.":"%1 Confirmez le certificat%2 pour permettre un accès transparent aux autres applications Kerio.",
+		"Access denied by administrator.":"Accès refusé par l’administrateur.",
+		"Back to Samepage.io":"Retour à Samepage.io",
+		"Create an Account":"Créer un compte",
+		"E-mail":"E-mail",
+		"Forgot password?":"Mot de passe oublié ?",
+		"Incorrect username or password":"Votre nom d'utilisateur ou mot de passe est erroné",
+		"Install SSL certificate":"Installer un certificat SSL",
+		"Keep me logged in":"Maintenir ma connexion",
+		"Login":"Accès",
+		"Password":"Mot de passe",
+		"Please login again.":"Veuillez vous ré-identifier.",
+		"Please use PC or Mac.":"Veuillez utiliser un PC ou Mac.",
+		"Please use one of the supported browsers:":"Veuillez utiliser un des navigateurs supportés :",
+		"Please use the recommended resolution of %1x%2 or higher.":"Veuillez utiliser la résolution proposée de %1x%2 ou supérieure.",
+		"Standard web client":"Client Web standard",
+		"Supported browsers:":"Navigateurs supportés :",
+		"The functionality is very limited. Using PC or Mac is recommended instead.":"La fonctionnalité est très limitée. L’utilisation d’un PC ou MAC est plutôt recommandée.",
+		"Username":"Nom utilisateur",
+		"Your browser or its version is not supported.":"Votre navigateur ou sa version n’est pas supporté.",
+		"Your device is not supported.":"Votre appareil n’est pas supporté.",
+		"Your display resolution is too low.":"Votre résolution d’écran est trop basse.",
+		"Your session has expired.":"Votre session est périmée.",
+		"and newer":"et plus récent"
+	}
+};

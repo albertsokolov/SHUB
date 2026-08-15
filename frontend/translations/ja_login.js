@@ -1,0 +1,31 @@
+kerio.lib.k_translation = {
+	"wlibLoginPage": {
+		"%1 %2 and %3":"%1 %2 および %3",
+		"%1 %2 to %3":"%1 %2 から %3",
+		"%1Confirm the certificate%2 for an automated login to other Kerio applications.":"%1証明書が%2 他の Kerio アプリケーションに自動ログインするかを確認する。",
+		"%1Confirm the certificate%2 to achieve seamless login into other Kerio applications.":"%1証明書を確認%2して、他のKerioアプリケーションにシームレスログインを実現します。",
+		"Access denied by administrator.":"管理者がアクセスを拒否しました。",
+		"Back to Samepage.io":"Samepage.ioに戻る",
+		"Create an Account":"アカウントを作成",
+		"E-mail":"電子メール",
+		"Forgot password?":"パスワードを忘れましたか？",
+		"Incorrect username or password":"ユーザ名またはパスワードが誤っています",
+		"Install SSL certificate":"SSL証明書をインストール",
+		"Keep me logged in":"ログイン状態を保持してください",
+		"Login":"ログイン",
+		"Password":"パスワード",
+		"Please login again.":"再度ログインしてください。",
+		"Please use PC or Mac.":"PC または Mac を使用してください。",
+		"Please use one of the supported browsers:":"次のいずれかの対応ブラウザを使用してください：",
+		"Please use the recommended resolution of %1x%2 or higher.":"推奨解像度 %1x%2 以上を使用してください。",
+		"Standard web client":"標準Webクライアント",
+		"Supported browsers:":"サポートされているブラウザ：",
+		"The functionality is very limited. Using PC or Mac is recommended instead.":"機能が非常に制限されています。代わりに PC または Mac の使用をお勧めします。",
+		"Username":"ユーザー名",
+		"Your browser or its version is not supported.":"ブラウザまたはそのバージョンがサポートされていません。",
+		"Your device is not supported.":"デバイスがサポートされていません。",
+		"Your display resolution is too low.":"表示解像度が低すぎます。",
+		"Your session has expired.":"セッションは時間切れです。",
+		"and newer":"以降"
+	}
+};

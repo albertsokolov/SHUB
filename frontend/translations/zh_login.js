@@ -1,0 +1,31 @@
+kerio.lib.k_translation = {
+	"wlibLoginPage": {
+		"%1 %2 and %3":"%1 %2 和 %3",
+		"%1 %2 to %3":"%1 %2 到 %3",
+		"%1Confirm the certificate%2 for an automated login to other Kerio applications.":"%1确认自动登录到其他 Kerio 应用程序的证书%2。",
+		"%1Confirm the certificate%2 to achieve seamless login into other Kerio applications.":"%1确认证书%2 实现无缝登录到其他 Kerio 应用程序。",
+		"Access denied by administrator.":"访问被管理员拒绝。",
+		"Back to Samepage.io":"返回至 Samepage.io",
+		"Create an Account":"创建帐户",
+		"E-mail":"电子邮件",
+		"Forgot password?":"忘记密码？",
+		"Incorrect username or password":"错误的用户名或密码",
+		"Install SSL certificate":"安装 SSL 证书",
+		"Keep me logged in":"一直保持登录状态",
+		"Login":"登录",
+		"Password":"密码",
+		"Please login again.":"请重新登录。",
+		"Please use PC or Mac.":"请使用 PC 或 Mac。",
+		"Please use one of the supported browsers:":"请使用某个支持的浏览器：",
+		"Please use the recommended resolution of %1x%2 or higher.":"请使用推荐的分辨率 %1x%2 或更高的分辨率。",
+		"Standard web client":"标准的 Web 客户端",
+		"Supported browsers:":"支持的浏览器：",
+		"The functionality is very limited. Using PC or Mac is recommended instead.":"功能十分有限。建议使用 PC 或 Mac。",
+		"Username":"用户名",
+		"Your browser or its version is not supported.":"不支持您的浏览器或其版本。",
+		"Your device is not supported.":"不支持您的设备。",
+		"Your display resolution is too low.":"显示分辨率过低。",
+		"Your session has expired.":"您的会话已过期。",
+		"and newer":"和更新版本"
+	}
+};
