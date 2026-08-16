@@ -4,39 +4,60 @@
 set -e
 
 APP_NAME="SHUB"
-TARGET_DIR="shub"
+GITHUB_USER="albertsokolov" # Укажите ваш точный юзернейм на GitHub
 
 echo "===================================================="
 echo " Начало загрузки проекта [$APP_NAME] из GitHub"
 echo "===================================================="
 
-# 1. Проверяем, установлен ли GitHub CLI в Arch Linux
-if ! command -v gh &> /dev/null; then
-    echo "❌ Ошибка: gh (GitHub CLI) не найден."
-    echo "Установите его командой: sudo pacman -S github-cli"
+# 1. Автоматический запуск SSH-агента и добавление ключа
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    echo "🔑 Запуск SSH-агента..."
+    eval "$(ssh-agent -s)" > /dev/null
+fi
+
+if ! ssh-add -l &> /dev/null; then
+    echo "🔑 Добавление SSH-ключа..."
+    if [ -f "$HOME/.ssh/id_ed25519" ]; then
+        ssh-add "$HOME/.ssh/id_ed25519"
+    else
+        echo "❌ Ошибка: Файл ключа $HOME/.ssh/id_ed25519 не найден!"
+        exit 1
+    fi
+fi
+
+# 2. Проверяем доступ к GitHub по SSH
+echo " Проверка SSH-подключения..."
+SSH_CHECK=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)
+if [[ "$SSH_CHECK" != *"successfully authenticated"* ]]; then
+    echo "❌ Ошибка аутентификации SSH."
     exit 1
 fi
 
-# 2. Проверяем авторизацию в gh
-if ! gh auth status &> /dev/null; then
-    echo "❌ Ошибка: Вы не авторизованы в GitHub CLI."
-    echo "Выполните в терминале команду: gh auth login"
-    exit 1
-fi
-
-# 3. Клонирование приватного репозитория
-if [ -d "$TARGET_DIR" ]; then
-    echo "⚠️ Папка $TARGET_DIR уже существует."
-    echo " Выполняем обновление (git pull) вместо полного клонирования..."
-    cd "$TARGET_DIR"
+# 3. Синхронизация кода (умное определение папки)
+# Проверяем, находимся ли мы уже внутри Git-репозитория SHUB
+if [ -d ".git" ] && [[ "$(git config --get remote.origin.url)" == *"github.com"* ]]; then
+    echo "🔄 Вы уже находитесь в рабочей директории репозитория."
+    echo " Выполняем обновление (git pull)..."
+    # На всякий случай обновляем URL на правильный SSH-адрес
+    git remote set-url origin "git@github.com:$GITHUB_USER/$APP_NAME.git"
     git pull origin main
 else
-    echo " Стягиваем приватный репозиторий через gh CLI..."
-    gh repo clone "$APP_NAME" "$TARGET_DIR"
-    cd "$TARGET_DIR"
+    # Если мы снаружи, проверяем наличие папки рядом
+    TARGET_DIR="shub"
+    if [ -d "$TARGET_DIR" ]; then
+        echo "⚠️ Папка $TARGET_DIR существует рядом. Заходим и обновляем..."
+        cd "$TARGET_DIR"
+        git remote set-url origin "git@github.com:$GITHUB_USER/$APP_NAME.git"
+        git pull origin main
+    else
+        echo " Стягиваем приватный репозиторий по SSH..."
+        git clone "git@github.com:$GITHUB_USER/$APP_NAME.git" "$TARGET_DIR"
+        cd "$TARGET_DIR"
+    fi
 fi
 
-# 4. Проверка и удаление старой Windows-базы данных, если она случайно осталась
+# 4. Проверка и удаление старой Windows-базы данных
 if [ -f "SHUB.db" ]; then
     echo " Удаление старого файла базы данных для пересоздания под Linux..."
     rm -f SHUB.db
@@ -46,5 +67,4 @@ fi
 echo "===================================================="
 echo " Проект успешно загружен. Запуск сборки Cargo..."
 echo "===================================================="
-
 cargo run

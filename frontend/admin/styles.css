@@ -333,3 +333,22 @@ margin-right: 10px; /* Чуть увеличили отступ до текст�
 /* Принудительно задаем правильный масштаб адаптивного спрайта */
 background-size: 900% 500% !important;
 }
+/* Кнопки управления MIP-панелей */
+.mip-btn {
+    background: linear-gradient(to bottom, #f2f7fc, #ebeff5);
+    border: 1px solid #99bbe8;
+    border-radius: 3px;
+    padding: 3px 12px;
+    color: #15428b;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+}
+.mip-btn:hover {
+    background: linear-gradient(to bottom, #eaf2fb, #dbe7f7);
+    border-color: #7eadd9;
+}
+.mip-btn:active {
+    background: #d4e3f5;
+}

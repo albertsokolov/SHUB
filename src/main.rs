@@ -15,6 +15,7 @@ use axum::response::Html;
 
 mod db_tools;
 mod logger;
+mod mip_users;
 
 static APP_NAME: &str = "SHUB";
 static DB_PATH: Lazy<String> = Lazy::new(|| format!("{}.db", APP_NAME));
@@ -50,6 +51,7 @@ async fn main() {
     .route("/login", post(login_handler))
     .route("/groups", get(get_groups_handler))
     .route("/users", get(get_users_handler))
+    .route("/mip/users", get(mip_users::get_mip_users_handler)) // Наш новый роут для MIP-панели
     .with_state(db_state);
 
     let app = Router::new()
