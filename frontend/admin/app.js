@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /**
- * ГЕНЕРАЦИЯ ИНТЕРФЕЙСА
+ * ГЕНЕРАЦИЯ ИНТЕРФЕЙСА (С добавлением нижнего логотипа)
  */
 function renderInterface() {
     const root = document.getElementById("app-root");
@@ -21,17 +21,23 @@ function renderInterface() {
 
     <!-- Панель баннера (40px) -->
     <div class="baner-panel">
-    <div class="mainMenu">
+    <div class="mainMenu" style="position: relative; height: 100%;">
     <div id="app-logo" class="logo-wrapper">
     <a class="logo-link" id="btn-0" title="Dashboard"></a>
     </div>
 
+    <!-- Список табов -->
     <ul class="x-tab-strip">
     <li class="btn-1" title="Accounts" data-target="accounts"></li>
     <li class="btn-2 active" title="Status" data-target="status"></li>
     <li class="btn-3" title="Configuration" data-target="configuration"></li>
     <li class="btn-4" title="Logs" data-target="logs"></li>
     </ul>
+
+    <!-- ЛОГОТИП В НИЖНЕЙ ЧАСТИ ПАНЕЛИ (Куда указывает стрелка) -->
+    <div class="bottom-logo-wrapper">
+    <img src="/admin-files/img/shub-logo-transparent.png" alt="SHUB" class="bottom-logo-img">
+    </div>
     </div>
     </div>
 
@@ -52,7 +58,7 @@ function renderInterface() {
     <div class="main-container">
     <div class="upper-panel">
     <h2 id="panel-title" style="margin: 0; font-family: sans-serif; color: #333; padding-left: 20px; line-height: 40px; font-weight: normal; display: flex; align-items: center;">
-    <span id="title-icon" class="icon icon-dashboard" style="margin-right: 10px;"></span>
+    <span id="title-icon" class="icon icon-dashboard"></span>
     <span id="title-text">Dashboard</span>
     </h2>
     </div>
@@ -70,6 +76,7 @@ function renderInterface() {
     </div>
     `;
 }
+
 
 /**
  * УПРАВЛЕНИЕ ТАБАМИ — Переключение подпанелей меню

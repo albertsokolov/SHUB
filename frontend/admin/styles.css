@@ -192,24 +192,144 @@ body.is-resizing .app-layout * {
 .menu-sub-panel.active {
     display: block;
 }
-/* Простые стили для дерева меню внутри списков */
+/* Дерево списков левого меню */
 .menu-tree {
     list-style-type: none;
-    padding-left: 15px;
+    padding: 0;
     margin: 0;
-    font-family: sans-serif;
+    padding-top: 10px;
 }
 
 .menu-tree li {
-    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    padding: 2px 15px; /* Увеличили вертикальный отступ для точного соответствия макету */
+    font-family: Tahoma, sans-serif;
+    font-size: 12px;
+    color: #000;
     cursor: pointer;
-    color: #444;
-    border-radius: 4px;
-    margin-bottom: 2px;
-    font-size: 14px;
+
+    /* Тонкая серая полоска под каждым пунктом меню */
+    border-bottom: 1px solid #dcdcdc;
+
+    /* Плавный переход для ховера */
+    transition: background-color 0.1s ease;
 }
 
+
+/* Эффект наведения мыши (светло-голубой, как на макете) */
 .menu-tree li:hover {
-    background-color: #e4e7ed;
+    background-color: #edf2fa;
+}
+
+/* Выделенный (активный) пункт меню */
+.menu-tree li.active {
+    background-color: #d9e4f4;
+    font-weight: normal; /* На макете текст активного пункта не жирный */
     color: #000;
+}
+/* Контейнер для логотипа внизу синей панели */
+.bottom-logo-wrapper {
+    position: absolute;
+    bottom: 15px; /* Отступ от самого низа экрана */
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none; /* Чтобы клики сквозь картинку не мешали интерфейсу */
+}
+
+/* Стилизация самого изображения логотипа */
+.bottom-logo-img {
+    width: 28px;    /* Оптимальный размер под ширину баннера 40px */
+    height: auto;
+    object-fit: contain;
+    opacity: 0.8;   /* Легкая прозрачность для соответствия стилю */
+    transition: opacity 0.2s ease;
+}
+
+.baner-panel:hover .bottom-logo-img {
+    opacity: 1;     /* Подсветка при наведении на панель */
+}
+/* Базовый класс для иконок меню — с адаптивным расчетом сетки */
+.icon {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    margin-right: 1px;
+    vertical-align: center;
+
+    background-image: url('/admin-files/img/icons-sprite.png');
+    background-repeat: no-repeat;
+
+    /*
+     *       Процентный расчет:
+     *       Ширина: 9 колонок. Шаг между ними = 100% / (9 - 1) = 12.5%
+     *       Высота: 5 строк. Шаг между ними = 100% / (5 - 1) = 25%
+     */
+    background-size: 900% 500%;
+}
+
+/* --- СТРОКА 1 (Y = 0%) --- */
+.icon-dashboard         { background-position: 0px 0%; }          /* Столбец 1 (X = 0px) */
+.icon-gateway           { background-position: 12.5% 0%; }        /* Столбец 2 */
+.icon-scale             { background-position: 25% 0%; }          /* Столбец 3 */
+.icon-time-chart        { background-position: 37.5% 0%; }        /* Столбец 4 */
+.icon-user              { background-position: 50% 0%; }          /* Столбец 5 */
+.icon-user-status       { background-position: 62.5% 0%; }        /* Столбец 6 */
+.icon-doc-warn          { background-position: 75% 0%; }          /* Столбец 7 */
+.icon-doc-cancel        { background-position: 87.5% 0%; }        /* Столбец 8 */
+.icon-doc-web           { background-position: 100% 0%; }         /* Столбец 9 */
+
+/* --- СТРОКА 2 (Y = 25%) --- */
+.icon-nic               { background-position: 0px 25%; }         /* Столбец 1 */
+.icon-cloud-cfg         { background-position: 12.5% 25%; }       /* Столбец 2 */
+.icon-net-tree          { background-position: 25% 25%; }         /* Столбец 3 */
+.icon-doc-cfg           { background-position: 37.5% 25%; }       /* Столбец 4 */
+.icon-groups            { background-position: 50% 25%; }         /* Столбец 5 */
+.icon-secure-work       { background-position: 62.5% 25%; }       /* Столбец 6 */
+.icon-doc-gear          { background-position: 75% 25%; }         /* Столбец 7 */
+.icon-filter-blue       { background-position: 87.5% 25%; }       /* Столбец 8 */
+.icon-tools             { background-position: 100% 25%; }        /* Столбец 9 */
+
+/* --- СТРОКА 3 (Y = 50%) --- */
+.icon-traffic-light     { background-position: 0px 50%; }         /* Столбец 1 */
+.icon-cert              { background-position: 25% 50%; }         /* Столбец 3 (Столбец 2 пустой) */
+.icon-axes              { background-position: 37.5% 50%; }       /* Столбец 4 */
+.icon-operator          { background-position: 50% 50%; }         /* Столбец 5 */
+.icon-nic-status        { background-position: 62.5% 50%; }       /* Столбец 6 */
+.icon-doc-link          { background-position: 75% 50%; }         /* Столбец 7 */
+.icon-doc-globe         { background-position: 87.5% 50%; }       /* Столбец 8 */
+.icon-filter-red        { background-position: 100% 50%; }        /* Столбец 9 */
+
+/* --- СТРОКА 4 (Y = 75%) --- */
+.icon-shield            { background-position: 0px 75%; }         /* Столбец 1 */
+.icon-inject            { background-position: 12.5% 75%; }       /* Столбец 2 */
+.icon-doc-layout        { background-position: 25% 75%; }         /* Столбец 3 */
+.icon-doc-chart         { background-position: 37.5% 75%; }       /* Столбец 4 */
+.icon-cluster           { background-position: 50% 75%; }         /* Столбец 5 */
+.icon-warn-sign         { background-position: 62.5% 75%; }       /* Столбец 6 */
+.icon-doc-list          { background-position: 75% 75%; }         /* Столбец 7 */
+.icon-doc-stop          { background-position: 87.5% 75%; }       /* Столбец 8 */
+.icon-monitor           { background-position: 100% 75%; }        /* Столбец 9 */
+
+/* --- СТРОКА 5 (Y = 100%) --- */
+.icon-stop-hand         { background-position: 0px 100%; }        /* Столбец 1 */
+.icon-monitor-time      { background-position: 12.5% 100%; }      /* Столбец 2 */
+.icon-doc-webglobe      { background-position: 25% 100%; }        /* Столбец 3 */
+.icon-gear-hammer       { background-position: 37.5% 100%; }      /* Столбец 4 */
+.icon-connections       { background-position: 50% 100%; }        /* Столбец 5 */
+.icon-db-chart          { background-position: 62.5% 100%; }      /* Столбец 6 */
+.icon-doc-phone         { background-position: 75% 100%; }        /* Столбец 7 */
+.icon-doc-danger        { background-position: 87.5% 100%; }      /* Столбец 8 */
+.icon-proxy             { background-position: 100% 100%; }       /* Столбец 9 */
+/* Увеличиваем размер иконки в верхней панели заголовка */
+#title-icon {
+width: 32x !important;
+height: 32px !important;
+margin-right: 10px; /* Чуть увеличили отступ до текста заголовка */
+
+/* Принудительно задаем правильный масштаб адаптивного спрайта */
+background-size: 900% 500% !important;
 }
