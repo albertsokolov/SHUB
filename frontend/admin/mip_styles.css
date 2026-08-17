@@ -1,0 +1,163 @@
+/* Общий контейнер для любой MIP-панели */
+.mip-panel-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-family: Tahoma, Verdana, sans-serif;
+    font-size: 11px; /* Чуть уменьшаем для плотности */
+    background: #cedeff;
+    padding: 8px 8px 8px 8px;
+    box-sizing: border-box;
+}
+
+/* Верхняя панель фильтрации (Домен, Поиск) */
+.mip-filter-bar {
+    background: linear-gradient(to bottom, #e0ebf9, #cbdcf2);
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-top: 1px solid #99bbe8;
+    border-bottom: 1px solid #99bbe8;
+    color: #15428b;
+}
+
+.mip-filter-bar label {
+    font-weight: normal;
+    color: #333;
+}
+
+.mip-filter-bar select,
+.mip-filter-input {
+    font-size: 11px;
+    padding: 2px 4px;
+    border: 1px solid #a3bae9;
+    background: #fff;
+    border-radius: 2px;
+}
+
+.mip-filter-input-wrapper {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Контейнер таблицы данных (Таблица растягивается до краев фильтра) */
+.mip-table-container {
+    flex: 1;
+    overflow-y: auto;
+    background: #fff;
+    /* Оставляем отступ только снизу перед кнопками, слева и справа — вплотную к границам */
+    margin: 0 0 6px 0;
+    border-bottom: 1px solid #99bbe8;
+}
+
+/* Стилизация сетки/таблицы (Grid) */
+.mip-grid {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 11px;
+}
+
+/* Шапка таблицы */
+.mip-grid thead tr {
+    background: linear-gradient(to bottom, #f9fbfd, #e2eefb);
+    border-bottom: 1px solid #99bbe8;
+    height: 23px;
+}
+
+.mip-grid th {
+    padding: 4px 6px;
+    border-right: 1px solid #c5d6ec;
+    font-weight: normal;
+    color: #15428b;
+    user-select: none;
+}
+
+/* Строки таблицы с данными */
+.mip-row {
+    height: 20px;
+    border-bottom: 1px solid #ededed;
+    background-color: #fff;
+    cursor: pointer;
+    color: #000;
+}
+
+/* Чередование цвета строк для лучшей читаемости (как в классических гридах) */
+.mip-row:nth-child(even) {
+    background-color: #f7fafd;
+}
+
+.mip-row td {
+    padding: 3px 6px;
+    border-right: 1px dotted #e0e0e0;
+    vertical-align: middle;
+}
+
+.mip-row td:last-child {
+    border-right: none;
+}
+
+/* Состояние выделенной строки (Светло-синий ровный фон) */
+.mip-row.selected {
+    background-color: #cbdcf2 !important;
+    color: #000;
+}
+
+/* Эффект наведения на строку */
+.mip-row:hover:not(.selected) {
+    background-color: #edf3fa;
+}
+
+/* Нижний статус-бар подсчета */
+.mip-status-bar {
+    background: linear-gradient(to bottom, #e0ebf9, #cbdcf2);
+    padding: 4px 8px;
+    border-top: 1px solid #99bbe8;
+    border-bottom: 1px solid #99bbe8;
+    color: #15428b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Подвальная панель управления (Кнопки действий) */
+.mip-action-bar {
+    background: #dfecfa;
+    padding: 4px 8px 8px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mip-btn-group {
+    display: flex;
+    gap: 4px;
+}
+
+/* Классические плоские кнопки Windows/ExtJS стиля */
+.mip-btn {
+    background: linear-gradient(to bottom, #f2f7fc, #e1ebf6);
+    border: 1px solid #a3bae9;
+    border-radius: 3px;
+    padding: 3px 10px;
+    color: #15428b;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.03);
+    transition: all 0.1s ease;
+}
+
+.mip-btn:hover {
+    background: linear-gradient(to bottom, #eaf2fb, #d0e0f5);
+    border-color: #7eadd9;
+    color: #000;
+}
+
+.mip-btn:active {
+    background: #cbdcf2;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}

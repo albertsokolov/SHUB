@@ -165,8 +165,11 @@ body {
 }
 
 .content-area {
-    flex: 1;
-    background-color: transparent;
+    font-family: sans-serif;
+    height: calc(100% - 40px);
+    background: #dfecfa;
+    padding: 0; /* Очищаем, чтобы MIP-компоненты управляли границами сами */
+    box-sizing: border-box;
 }
 
 /* ==========================================================================

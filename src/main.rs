@@ -59,6 +59,7 @@ async fn main() {
     // Точки входа (Контролируются куками на бэкенде)
     .route("/", get(root_handler))
     .route("/admin", get(admin_handler))
+    .route("/admin/", get(admin_handler))
     // Сервисная раздача статических ресурсов (скрипты, стили) напрямую из их папок
     .nest_service("/login", ServeDir::new("frontend/login"))
     .nest_service("/client", ServeDir::new("frontend/client"))
