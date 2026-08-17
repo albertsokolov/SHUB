@@ -6,20 +6,17 @@
     font-family: Tahoma, Verdana, sans-serif;
     font-size: 11px; /* Чуть уменьшаем для плотности */
     background: #cedeff;
-    padding: 8px 8px 8px 8px;
+    padding: 10px 10px 10px 8px;
     box-sizing: border-box;
 }
 
 /* Верхняя панель фильтрации (Домен, Поиск) */
 .mip-filter-bar {
-    background: linear-gradient(to bottom, #e0ebf9, #cbdcf2);
-    padding: 5px 8px;
+
+    padding: 10px 0px;
     display: flex;
     align-items: center;
     gap: 15px;
-    border-top: 1px solid #99bbe8;
-    border-bottom: 1px solid #99bbe8;
-    color: #15428b;
 }
 
 .mip-filter-bar label {
@@ -29,11 +26,28 @@
 
 .mip-filter-bar select,
 .mip-filter-input {
-    font-size: 11px;
+    width: 200px;
     padding: 2px 4px;
+    /* Тонкая серо-синяя рамка в цвет панели */
     border: 1px solid #a3bae9;
     background: #fff;
     border-radius: 2px;
+    font-size: 11px;
+    /* Убираем дефолтную браузерную обводку */
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.1s ease;
+}
+
+.mip-filter-input:focus {
+    /* Полностью убираем жирную черную рамку браузера */
+    outline: none !important;
+
+    /* Меняем рамку на мягкую синюю, как в классических интерфейсах */
+    border: 1px solid #15428b !important;
+
+    /* Дополнительно можно добавить легкое свечение */
+    box-shadow: 0 0 3px rgba(21, 66, 139, 0.2);
 }
 
 .mip-filter-input-wrapper {
@@ -50,7 +64,7 @@
     background: #fff;
     /* Оставляем отступ только снизу перед кнопками, слева и справа — вплотную к границам */
     margin: 0 0 6px 0;
-    border-bottom: 1px solid #99bbe8;
+    border: 1px solid #99bbe8;
 }
 
 /* Стилизация сетки/таблицы (Grid) */
@@ -113,11 +127,7 @@
 
 /* Нижний статус-бар подсчета */
 .mip-status-bar {
-    background: linear-gradient(to bottom, #e0ebf9, #cbdcf2);
     padding: 4px 8px;
-    border-top: 1px solid #99bbe8;
-    border-bottom: 1px solid #99bbe8;
-    color: #15428b;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -125,7 +135,6 @@
 
 /* Подвальная панель управления (Кнопки действий) */
 .mip-action-bar {
-    background: #dfecfa;
     padding: 4px 8px 8px 8px;
     display: flex;
     justify-content: space-between;
