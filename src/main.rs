@@ -34,6 +34,22 @@ struct LoginResponse {
     message: String,
 }
 
+#[derive(Deserialize)]
+struct CreateUserRequest {
+    login: String,
+    password: String,
+    firstname: String,
+    lastname: String,
+    email: Option<String>,
+}
+
+#[derive(Serialize)]
+struct UserActionResponse {
+    success: bool,
+    message: String,
+}
+
+
 #[tokio::main]
 async fn main() {
     logger::init_logger(APP_NAME);
@@ -51,7 +67,8 @@ async fn main() {
     .route("/login", post(login_handler))
     .route("/groups", get(get_groups_handler))
     .route("/users", get(get_users_handler))
-    .route("/mip/users", get(mip_users::get_mip_users_handler)) // Наш новый роут для MIP-панели
+    .route("/mip/users", get(mip_users::get_mip_users_handler))
+    .route("/users/add", post(add_user_handler)) // Наш новый эндпоинт для сохранения
     .with_state(db_state);
 
     let app = Router::new()
@@ -137,4 +154,41 @@ async fn get_groups_handler(State(db): State<DbState>) -> impl IntoResponse {
 
 async fn get_users_handler(State(db): State<DbState>) -> impl IntoResponse {
     Json(db_tools::fetch_all_users(&db.lock().unwrap()).unwrap())
+}
+async fn add_user_handler(
+    State(db): State<DbState>,
+                          Json(payload): Json<CreateUserRequest>,
+) -> impl IntoResponse {
+    let conn = db.lock().unwrap();
+
+    // Безопасно очищаем от пробелов строку внутри Option, если она существует
+    let email_opt = payload.email
+    .as_deref()
+    .map(|s| s.trim())
+    .filter(|s| !s.is_empty())
+    .map(|s| s.to_string());
+
+    match db_tools::add_user(
+        &conn,
+        &payload.login,
+        &payload.password,
+        &payload.firstname,
+        &payload.lastname,
+        email_opt
+    ) {
+        Ok(_) => {
+            logger::info(APP_NAME, &format!("Успешно добавлен пользователь: {}", payload.login));
+            Json(UserActionResponse {
+                success: true,
+                message: "User added".to_string()
+            })
+        }
+        Err(e) => {
+            logger::error(APP_NAME, &format!("Ошибка добавления пользователя {}: {}", payload.login, e));
+            Json(UserActionResponse {
+                success: false,
+                message: e.to_string()
+            })
+        }
+    }
 }

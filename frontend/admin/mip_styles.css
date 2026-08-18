@@ -228,3 +228,116 @@
     color: #999;
     cursor: default;
 }
+/* ==========================================================================
+ *   МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯ (EXTJS / WIN32 STYLE)
+ *   ========================================================================== */
+
+/* Подложка затенения всего интерфейса фронтенда */
+.mip-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.35); /* Эффект плотного матового затенения */
+    z-index: 2000; /* Перекрывает контекстные меню и весь app-layout */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Контейнер самого окна */
+.mip-modal-window {
+    background-color: #cedeff; /* Фирменный сине-серый фон ExtJS */
+    width: 380px;
+    border: 1px solid #15428b;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Шапка модального окна */
+.mip-modal-header {
+    background: linear-gradient(to bottom, #f9fbfd, #e2eefb); /* Градиент шапки */
+    border-bottom: 1px solid #99bbe8;
+    height: 25px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.mip-modal-title {
+    color: #15428b;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Маленькая системная кнопка закрытия [X] */
+.mip-modal-close-btn {
+    width: 15px;
+    height: 15px;
+    background-color: #e2eefb;
+    border: 1px solid #99bbe8;
+    color: #15428b;
+    text-align: center;
+    line-height: 13px;
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 2px;
+}
+.mip-modal-close-btn:hover {
+    background-color: #f2f7fc;
+    border-color: #7eadd9;
+    color: red;
+}
+
+/* Тело формы */
+.mip-modal-body {
+    background-color: #ffffff;
+    margin: 6px; /* Внутренний отступ от границ ExtJS-окна */
+    border: 1px solid #99bbe8;
+    padding: 15px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Элементы формы ввода */
+.mip-form-group {
+    display: flex;
+    align-items: center;
+}
+
+.mip-form-group label {
+    width: 100px; /* Фиксированное выравнивание подписей */
+    color: #333;
+    flex-shrink: 0;
+}
+
+.mip-form-input {
+    flex: 1;
+    padding: 2px 4px;
+    border: 1px solid #a3bae9;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    outline: none;
+    height: 20px;
+}
+.mip-form-input:focus {
+    border: 1px solid #15428b !important;
+}
+
+/* Подвал окна с кнопками сохранения/отмены */
+.mip-modal-footer {
+    padding: 0 6px 6px 6px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}

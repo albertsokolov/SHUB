@@ -171,3 +171,26 @@ pub fn fetch_all_users(conn: &Connection) -> Result<Vec<User>> {
     }
     Ok(users)
 }
+pub fn add_user(
+    conn: &Connection,
+    login: &str,
+    password: &str,
+    first_name: &str,
+    last_name: &str,
+    email: Option<String>
+) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password)
+    VALUES (?, ?, ?, ?, ?, ?, ?)",
+                 (
+                     first_name,
+                  last_name,
+                  None::<String>,       // Должность пока оставляем пустой
+                  email,                // Опциональный email
+                  None::<Vec<u8>>,      // Аватар отсутствует при создании
+                  login,
+                  password,
+                 ),
+    )?;
+    Ok(conn.last_insert_rowid())
+}
