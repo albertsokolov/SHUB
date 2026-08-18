@@ -86,6 +86,15 @@ const mip_users = {
 
                 document.addEventListener("click", e => e.target.closest("#mip-active-menu") || this.closeMenu());
 
+                // Обработчик двойного клика для редактирования
+                tbody.addEventListener("dblclick", e => {
+                    const row = e.target.closest(".mip-row");
+                    if (!row) return;
+                    this.sel(tbody, row);
+                    const usernameText = row.querySelector(".mip-row-username span:not(.icon)").textContent.trim();
+                    this.cmd("edit", usernameText, row);
+                });
+
                 // Назначение событий нижним кнопкам в подвале
                 ["add", "edit", "remove"].forEach(act => {
                     document.getElementById(`mip-btn-${act}`).addEventListener("click", () => {
