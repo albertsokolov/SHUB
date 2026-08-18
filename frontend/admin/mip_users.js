@@ -77,26 +77,24 @@ const mip_users = {
                     `;
                     document.body.appendChild(menu);
 
+                    // Нажатие внутри контекстного меню (ПКМ)
                     menu.addEventListener("click", ev => {
                         const item = ev.target.closest(".mip-context-item:not(.disabled)");
-                        if (item) this.cmd(item.dataset.cmd, row.querySelector(".mip-row-username span:not(.icon)").textContent.trim());
+                        if (item) this.cmd(item.dataset.cmd, row.querySelector(".mip-row-username span:not(.icon)").textContent.trim(), row);
                     });
                 });
 
                 document.addEventListener("click", e => e.target.closest("#mip-active-menu") || this.closeMenu());
 
-                // Компактное назначение событий нижним кнопкам
+                // Назначение событий нижним кнопкам в подвале
                 ["add", "edit", "remove"].forEach(act => {
-                    document.getElementById(`mip-btn-${act}`).addEventListener("click", async () => {
-                        // Принудительно закрываем меню при любом клике на кнопки подвала
+                    document.getElementById(`mip-btn-${act}`).addEventListener("click", () => {
                         this.closeMenu();
-
                         if (act === "add") return this.cmd("add");
-
                         const sel = tbody.querySelector(".mip-row.selected");
                         if (sel) {
                             const userText = sel.querySelector(".mip-row-username span:not(.icon)").textContent.trim();
-                            await this.cmd(act, userText);
+                            this.cmd(act, userText, sel); // Передаем выделенную строку третьим параметром
                         } else {
                             alert("Пожалуйста, выберите пользователя в таблице.");
                         }
@@ -115,15 +113,18 @@ const mip_users = {
 
     closeMenu: () => document.getElementById("mip-active-menu")?.remove(),
 
-    // Измененный централизованный обработчик команд
-    cmd(command, username) {
+    // Обновленный обработчик команд для перенаправления на Edit
+    cmd(command, username, selectedRow = null) {
         this.closeMenu();
         if (command === "add") return this.showModal();
 
+        if (command === "edit") {
+            if (username === "admin") return alert("Нельзя редактировать системного администратора!");
+            return this.showModal(selectedRow); // Передаем строку для заполнения формы данными
+        }
+
         if (command === "remove") {
             if (username === "admin") return alert("Нельзя удалить системного администратора!");
-
-            // Вызываем наше кастомное окно вместо нативного confirm
             this.showConfirm(`Are you sure you want to remove user "${username}"?`, async () => {
                 try {
                     const response = await fetch("/api/mip/users/remove", {
@@ -132,69 +133,46 @@ const mip_users = {
                         body: JSON.stringify({ login: username })
                     });
                     const result = await response.json();
-
-                    if (result.success) {
-                        this.init(); // Перерисовываем грид и обновляем счетчик
-                    } else {
-                        alert(`Ошибка удаления: ${result.message}`);
-                    }
-                } catch (err) {
-                    alert(`Сетевая ошибка: ${err}`);
-                }
+                    if (result.success) this.init();
+                    else alert(`Ошибка удаления: ${result.message}`);
+                } catch (err) { alert(`Сетевая ошибка: ${err}`); }
             });
         } else {
             alert(`Действие: ${command.toUpperCase()} для ${username}`);
         }
     },
 
-    // Новый метод кастомного окна подтверждения в стиле ExtJS/Win32
-    showConfirm(message, onYes) {
-        if (document.getElementById("mip-confirm-overlay")) return;
+    // Универсальный метод модального окна (работает и на Add, и на Edit)
+    showModal(editRow = null) {
+        const isEdit = !!editRow;
+        const modalId = isEdit ? "mip-user-edit-overlay" : "mip-user-modal-overlay";
+        if (document.getElementById(modalId)) return;
+
+        // Извлекаем текущие данные из строки таблицы, если включен режим редактирования
+        let currentData = { login: "", firstname: "", lastname: "", email: "" };
+        if (isEdit) {
+            currentData.login = editRow.querySelector(".mip-row-username span:not(.icon)").textContent.trim();
+            const fullNameText = editRow.querySelector(".mip-row-fullname").textContent.trim();
+            const spaceIdx = fullNameText.indexOf(" ");
+            if (spaceIdx !== -1) {
+                currentData.firstname = fullNameText.substring(0, spaceIdx);
+                currentData.lastname = fullNameText.substring(spaceIdx + 1);
+            } else {
+                currentData.firstname = fullNameText;
+            }
+            const descText = editRow.querySelector(".mip-row-desc").textContent.trim();
+            currentData.email = descText === "—" ? "" : descText;
+        }
 
         const overlay = document.createElement("div");
-        Object.assign(overlay, { id: "mip-confirm-overlay", className: "mip-modal-overlay" });
-        overlay.style.zIndex = "3000"; // Поверх стандартных модальных окон
-
-        overlay.innerHTML = `
-        <div class="mip-confirm-window">
-        <div class="mip-modal-header">
-        <div class="mip-modal-title">Confirm Action</div>
-        <div class="mip-modal-close-btn" id="mip-confirm-close">X</div>
-        </div>
-        <div class="mip-confirm-body">
-        <div class="mip-confirm-icon-question">?</div>
-        <div class="mip-confirm-text">${message}</div>
-        </div>
-        <div class="mip-modal-footer" style="justify-content: center; gap: 8px;">
-        <button class="mip-btn" id="mip-confirm-yes" style="min-width: 60px;">Yes</button>
-        <button class="mip-btn" id="mip-confirm-no" style="min-width: 60px;">No</button>
-        </div>
-        </div>`;
-
-        document.body.appendChild(overlay);
-
-        const close = () => overlay.remove();
-
-        document.getElementById("mip-confirm-close").onclick = close;
-        document.getElementById("mip-confirm-no").onclick = close;
-        document.getElementById("mip-confirm-yes").onclick = () => {
-            close();
-            onYes(); // Выполняем переданную функцию удаления
-        };
-    },
-
-    showModal() {
-        if (document.getElementById("mip-user-modal-overlay")) return;
-
-        const overlay = document.createElement("div");
-        Object.assign(overlay, { id: "mip-user-modal-overlay", className: "mip-modal-overlay" });
+        Object.assign(overlay, { id: modalId, className: "mip-modal-overlay" });
 
         const fields = [
-            { id: "login", label: "Username:", type: "text" },
-            { id: "firstname", label: "First Name:", type: "text" },
-            { id: "lastname", label: "Last Name:", type: "text" },
-            { id: "email", label: "Email / Desc:", type: "email" },
-            { id: "password", label: "Password:", type: "password" }
+            { id: "login", label: "Username:", type: "text", value: currentData.login, disabled: isEdit },
+            { id: "firstname", label: "First Name:", type: "text", value: currentData.firstname, disabled: false },
+            { id: "lastname", label: "Last Name:", type: "text", value: currentData.lastname, disabled: false },
+            { id: "email", label: "Email / Desc:", type: "email", value: currentData.email, disabled: false },
+            { id: "password", label: "Password:", type: "password", value: "", disabled: false, placeholder: isEdit ? "Leave blank to keep current" : "" }
         ];
 
         overlay.innerHTML = `
@@ -202,7 +180,7 @@ const mip_users = {
         <div class="mip-modal-header">
         <div class="mip-modal-title">
         <span class="icon icon-user" style="width:14px;height:14px;background-size:900% 500%;"></span>
-        <span>Add New User</span>
+        <span>${isEdit ? 'Edit User Data' : 'Add New User'}</span>
         </div>
         <div class="mip-modal-close-btn" id="mip-modal-close">X</div>
         </div>
@@ -210,7 +188,9 @@ const mip_users = {
         ${fields.map(f => `
             <div class="mip-form-group">
             <label>${f.label}</label>
-            <input type="${f.type}" id="modal-input-${f.id}" class="mip-form-input" autocomplete="off">
+            <input type="${f.type}" id="modal-input-${f.id}" class="mip-form-input"
+            value="${f.value}" ${f.disabled ? 'disabled style="background:#e9e9e9;color:#666;"' : ''}
+            placeholder="${f.placeholder || ''}" autocomplete="off">
             </div>`).join('')}
             </div>
             <div class="mip-modal-footer">
@@ -229,11 +209,14 @@ const mip_users = {
                 const vals = {};
                 fields.forEach(f => vals[f.id] = document.getElementById(`modal-input-${f.id}`).value.trim());
 
-                if (!vals.login || !vals.password || !vals.firstname || !vals.lastname)
+                // При создании пароль обязателен, при редактировании — может быть пустым
+                if (!vals.login || (!isEdit && !vals.password) || !vals.firstname || !vals.lastname)
                     return alert("Заполните обязательные поля!");
 
                 try {
-                    const response = await fetch("/api/mip/users/add", {
+                    // Выбираем эндпоинт в зависимости от режима окна (add или edit)
+                    const apiUrl = isEdit ? "/api/mip/users/edit" : "/api/mip/users/add";
+                    const response = await fetch(apiUrl, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(vals)
@@ -241,7 +224,7 @@ const mip_users = {
                     const result = await response.json();
                     if (result.success) {
                         close();
-                        this.init();
+                        this.init(); // Перерисовываем таблицу для отображения изменений
                     } else {
                         alert(`Ошибка сохранения: ${result.message}`);
                     }
@@ -250,6 +233,7 @@ const mip_users = {
                 }
             };
     },
+
 
 
     esc: str => str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])) : '—'

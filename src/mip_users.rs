@@ -18,7 +18,8 @@ pub fn router() -> Router<DbState> {
     Router::new()
     .route("/users", get(get_mip_users_handler))
     .route("/users/add", post(add_user_handler))
-    .route("/users/remove", post(delete_user_handler)) // Новый роут удаления
+    .route("/users/remove", post(delete_user_handler))
+    .route("/users/edit", post(edit_user_handler)) // Новый роут для редактирования
 }
 
 #[derive(Serialize)]
@@ -144,6 +145,58 @@ pub async fn delete_user_handler(
         }),
         Err(e) => {
             logger::error(APP_NAME, &format!("Ошибка удаления пользователя {}: {}", login, e));
+            Json(UserActionResponse {
+                success: false,
+                message: e.to_string()
+            })
+        }
+    }
+}
+// Обработчик изменения данных пользователя (POST /api/mip/users/edit)
+pub async fn edit_user_handler(
+    State(db): State<DbState>,
+                               Json(payload): Json<CreateUserRequest>,
+) -> impl IntoResponse {
+    let conn = db.lock().unwrap();
+    let login = &payload.login;
+
+    if login == "admin" {
+        return Json(UserActionResponse {
+            success: false,
+            message: "Cannot modify system administrator".to_string()
+        });
+    }
+
+    let email_opt = payload.email
+    .as_deref()
+    .map(|s| s.trim())
+    .filter(|s| !s.is_empty())
+    .map(|s| s.to_string());
+
+    // Внимательно проверяем ветки match: каждая ДОЛЖНА возвращать Json(UserActionResponse)
+    match db_tools::update_user(
+        &conn,
+        login,
+        &payload.password,
+        &payload.firstname,
+        &payload.lastname,
+        email_opt
+    ) {
+        Ok(rows) if rows > 0 => {
+            logger::info(APP_NAME, &format!("Успешно обновлен пользователь: {}", login));
+            Json(UserActionResponse {
+                success: true,
+                message: "User updated".to_string()
+            })
+        }
+        Ok(_) => {
+            Json(UserActionResponse {
+                success: false,
+                message: "User not found".to_string()
+            })
+        }
+        Err(e) => {
+            logger::error(APP_NAME, &format!("Ошибка обновления пользователя {}: {}", login, e));
             Json(UserActionResponse {
                 success: false,
                 message: e.to_string()

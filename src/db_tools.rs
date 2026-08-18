@@ -201,3 +201,29 @@ pub fn delete_user(conn: &Connection, login: &str) -> Result<usize> {
     }
     conn.execute("DELETE FROM user_tab WHERE login = ?", [login])
 }
+pub fn update_user(
+    conn: &Connection,
+    login: &str,
+    password: &str,
+    first_name: &str,
+    last_name: &str,
+    email: Option<String>
+) -> Result<usize> {
+    if login == "admin" {
+        return Ok(0);
+    }
+
+    if password.is_empty() {
+        // Если пароль пустой, обновляем только личные данные
+        conn.execute(
+            "UPDATE user_tab SET first_name = ?, last_name = ?, email = ? WHERE login = ?",
+            (first_name, last_name, email, login),
+        )
+    } else {
+        // Если пароль введен, обновляем и его тоже
+        conn.execute(
+            "UPDATE user_tab SET first_name = ?, last_name = ?, email = ?, password = ? WHERE login = ?",
+            (first_name, last_name, email, password, login),
+        )
+    }
+}
