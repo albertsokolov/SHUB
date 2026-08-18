@@ -106,11 +106,35 @@ const mip_users = {
 
     closeMenu: () => document.getElementById("mip-active-menu")?.remove(),
 
-    cmd(command, username) {
+    async cmd(command, username) {
         this.closeMenu();
-        if (command === "add") this.showModal();
-        else alert(`Действие: ${command.toUpperCase()} для ${username}`);
+        if (command === "add") return this.showModal();
+
+        if (command === "remove") {
+            if (username === "admin") return alert("Нельзя удалить системного администратора!");
+            if (!confirm(`Вы уверены, что хотите удалить пользователя ${username}?`)) return;
+
+            try {
+                const response = await fetch("/api/mip/users/remove", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ login: username })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    this.init(); // Сразу же перерисовываем таблицу и обновляем счетчик
+                } else {
+                    alert(`Ошибка удаления: ${result.message}`);
+                }
+            } catch (err) {
+                alert(`Сетевая ошибка: ${err}`);
+            }
+        } else {
+            alert(`Действие: ${command.toUpperCase()} для ${username}`);
+        }
     },
+
 
     showModal() {
         if (document.getElementById("mip-user-modal-overlay")) return;
@@ -162,8 +186,8 @@ const mip_users = {
                     return alert("Заполните обязательные поля!");
 
                 try {
-                    // Отправляем структурированные данные на наш новый эндпоинт в Axum
-                    const response = await fetch("/api/users/add", {
+                    // Изменили путь, так как эндпоинт теперь вложен в роутер /api/mip/users/add
+                    const response = await fetch("/api/mip/users/add", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(vals)
@@ -173,7 +197,7 @@ const mip_users = {
 
                     if (result.success) {
                         close();
-                        this.init(); // Автоматически обновляем таблицу и инкрементируем счетчик пользователей
+                        this.init();
                     } else {
                         alert(`Ошибка сохранения: ${result.message}`);
                     }

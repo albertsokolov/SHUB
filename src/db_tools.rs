@@ -194,3 +194,10 @@ pub fn add_user(
     )?;
     Ok(conn.last_insert_rowid())
 }
+pub fn delete_user(conn: &Connection, login: &str) -> Result<usize> {
+    // Запрещаем удаление системного администратора
+    if login == "admin" {
+        return Ok(0);
+    }
+    conn.execute("DELETE FROM user_tab WHERE login = ?", [login])
+}
