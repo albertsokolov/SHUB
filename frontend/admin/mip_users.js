@@ -87,10 +87,19 @@ const mip_users = {
 
                 // Компактное назначение событий нижним кнопкам
                 ["add", "edit", "remove"].forEach(act => {
-                    document.getElementById(`mip-btn-${act}`).addEventListener("click", () => {
+                    document.getElementById(`mip-btn-${act}`).addEventListener("click", async () => {
+                        // Принудительно закрываем меню при любом клике на кнопки подвала
+                        this.closeMenu();
+
                         if (act === "add") return this.cmd("add");
+
                         const sel = tbody.querySelector(".mip-row.selected");
-                        sel ? this.cmd(act, sel.querySelector(".mip-row-username span:not(.icon)").textContent.trim()) : alert("Выберите пользователя");
+                        if (sel) {
+                            const userText = sel.querySelector(".mip-row-username span:not(.icon)").textContent.trim();
+                            await this.cmd(act, userText);
+                        } else {
+                            alert("Пожалуйста, выберите пользователя в таблице.");
+                        }
                     });
                 });
 
@@ -106,35 +115,73 @@ const mip_users = {
 
     closeMenu: () => document.getElementById("mip-active-menu")?.remove(),
 
-    async cmd(command, username) {
+    // Измененный централизованный обработчик команд
+    cmd(command, username) {
         this.closeMenu();
         if (command === "add") return this.showModal();
 
         if (command === "remove") {
             if (username === "admin") return alert("Нельзя удалить системного администратора!");
-            if (!confirm(`Вы уверены, что хотите удалить пользователя ${username}?`)) return;
 
-            try {
-                const response = await fetch("/api/mip/users/remove", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ login: username })
-                });
-                const result = await response.json();
+            // Вызываем наше кастомное окно вместо нативного confirm
+            this.showConfirm(`Are you sure you want to remove user "${username}"?`, async () => {
+                try {
+                    const response = await fetch("/api/mip/users/remove", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ login: username })
+                    });
+                    const result = await response.json();
 
-                if (result.success) {
-                    this.init(); // Сразу же перерисовываем таблицу и обновляем счетчик
-                } else {
-                    alert(`Ошибка удаления: ${result.message}`);
+                    if (result.success) {
+                        this.init(); // Перерисовываем грид и обновляем счетчик
+                    } else {
+                        alert(`Ошибка удаления: ${result.message}`);
+                    }
+                } catch (err) {
+                    alert(`Сетевая ошибка: ${err}`);
                 }
-            } catch (err) {
-                alert(`Сетевая ошибка: ${err}`);
-            }
+            });
         } else {
             alert(`Действие: ${command.toUpperCase()} для ${username}`);
         }
     },
 
+    // Новый метод кастомного окна подтверждения в стиле ExtJS/Win32
+    showConfirm(message, onYes) {
+        if (document.getElementById("mip-confirm-overlay")) return;
+
+        const overlay = document.createElement("div");
+        Object.assign(overlay, { id: "mip-confirm-overlay", className: "mip-modal-overlay" });
+        overlay.style.zIndex = "3000"; // Поверх стандартных модальных окон
+
+        overlay.innerHTML = `
+        <div class="mip-confirm-window">
+        <div class="mip-modal-header">
+        <div class="mip-modal-title">Confirm Action</div>
+        <div class="mip-modal-close-btn" id="mip-confirm-close">X</div>
+        </div>
+        <div class="mip-confirm-body">
+        <div class="mip-confirm-icon-question">?</div>
+        <div class="mip-confirm-text">${message}</div>
+        </div>
+        <div class="mip-modal-footer" style="justify-content: center; gap: 8px;">
+        <button class="mip-btn" id="mip-confirm-yes" style="min-width: 60px;">Yes</button>
+        <button class="mip-btn" id="mip-confirm-no" style="min-width: 60px;">No</button>
+        </div>
+        </div>`;
+
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+
+        document.getElementById("mip-confirm-close").onclick = close;
+        document.getElementById("mip-confirm-no").onclick = close;
+        document.getElementById("mip-confirm-yes").onclick = () => {
+            close();
+            onYes(); // Выполняем переданную функцию удаления
+        };
+    },
 
     showModal() {
         if (document.getElementById("mip-user-modal-overlay")) return;
@@ -186,15 +233,12 @@ const mip_users = {
                     return alert("Заполните обязательные поля!");
 
                 try {
-                    // Изменили путь, так как эндпоинт теперь вложен в роутер /api/mip/users/add
                     const response = await fetch("/api/mip/users/add", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(vals)
                     });
-
                     const result = await response.json();
-
                     if (result.success) {
                         close();
                         this.init();
@@ -206,6 +250,7 @@ const mip_users = {
                 }
             };
     },
+
 
     esc: str => str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])) : '—'
 };
