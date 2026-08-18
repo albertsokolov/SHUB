@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // ПОЛНОЕ ОТКЛЮЧЕНИЕ МЕНЮ БРАУЗЕРА НА ВСЕЙ СТРАНИЦЕ АДМИНКИ
+    document.addEventListener("contextmenu", e => e.preventDefault());
     // 1. Генерируем каркас интерфейса, динамически внедряя изолированные файлы меню
     renderInterface();
 

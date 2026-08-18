@@ -124,7 +124,25 @@
 .mip-row:hover:not(.selected) {
     background-color: #edf3fa;
 }
+/* Выравнивание иконки и текста в ячейке пользователя */
+.mip-row-username {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px;
+    height: 100%;
+}
 
+/* Явно указываем центрирование для самой иконки-спрайта */
+.mip-row-username .icon {
+    width: 20px !important;
+    height: 20px !important;
+
+    /* Принудительно сохраняем правильные пропорции сетки спрайта */
+    background-size: 900% 500% !important;
+    margin: 0px !important;
+    flex-shrink: 0;
+    padding: 0px;
+}
 /* Нижний статус-бар подсчета */
 .mip-status-bar {
     padding: 4px 8px;
@@ -169,4 +187,44 @@
 .mip-btn:active {
     background: #cbdcf2;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+/* Контейнер контекстного меню */
+.mip-context-menu {
+    position: fixed;
+    z-index: 1000;
+    background: #f0f0f0;
+    border: 1px solid #979797;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    padding: 2px;
+    min-width: 180px;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+}
+
+/* Элементы меню */
+.mip-context-item {
+    padding: 4px 20px 4px 24px;
+    color: #000;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+/* Эффект наведения (классический синий цвет выделения) */
+.mip-context-item:hover:not(.disabled) {
+    background-color: #aecaf2;
+}
+
+/* Разделительная линия между группами кнопок */
+.mip-context-separator {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 3px 2px;
+    border-bottom: 1px solid #fff;
+}
+
+/* Неактивный пункт меню (например, Disable 2-step verification) */
+.mip-context-item.disabled {
+    color: #999;
+    cursor: default;
 }
