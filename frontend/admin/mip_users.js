@@ -38,41 +38,65 @@ const mip_users = {
             document.getElementById("mip-user-count").innerText = users.length;
 
             tbody.innerHTML = users.map(u => `
-            <tr class="mip-row" data-user="${this.esc(u.username)}" data-full="${this.esc(u.full_name)}" data-desc="${this.esc(u.description)}">
+            <tr class="mip-row ${!u.enabled ? 'mip-row-disabled' : ''}" data-user="${this.esc(u.username)}" data-full="${this.esc(u.full_name)}" data-desc="${this.esc(u.description)}" data-enabled="${u.enabled}">
             <td class="mip-row-username">
-            <span class="icon icon-user" style="width:16px;height:16px;background-size:900% 500%!important;margin:0;flex-shrink:0"></span>
+            <span class="icon icon-user" style="width:16px;height:16px;background-size:900% 500%!important;margin:0;flex-shrink:0;opacity:${u.enabled ? 1 : 0.4}"></span>
             <span>${this.esc(u.username)}</span>
             </td>
             <td>${this.esc(u.full_name)}</td><td>${this.esc(u.description)}</td><td>${this.esc(u.groups)}</td>
             </tr>`).join('');
 
-            // ЛКМ, Двойной клик и Контекстное меню (ПКМ) объединены через один слушатель на tbody
             tbody.onmousedown = (e) => {
                 const row = e.target.closest(".mip-row");
                 if (!row) return;
                 this.sel(tbody, row);
-                const user = row.dataset.user;
 
                 if (e.button === 2) { // ПКМ
                     e.preventDefault();
                     this.closeMenu();
+
+                    // Считываем текущий статус из data-атрибута строки ("true" или "false")
+                    const isEnabled = row.dataset.enabled === "true";
+
                     const menu = document.createElement("div");
                     Object.assign(menu, { id: "mip-active-menu", className: "mip-context-menu" });
                     menu.style.cssText = `left:${e.clientX}px; top:${e.clientY}px;`;
-                    menu.innerHTML = ['add', 'edit', 'remove'].map(c => `<div class="mip-context-item" data-act="${c}">${c[0].toUpperCase() + c.slice(1)}...</div>`).join('') +
-                    `<div class="mip-context-separator"></div><div class="mip-context-item disabled">Disable 2-step verification</div>`;
+
+                    // Формируем базовые команды (Add, Edit, Remove)
+                    // Находим, где генерируется переменная menuHtml, и заменяем на этот чистый код:
+                    let menuHtml = `
+                    <div class="mip-context-item" data-act="add">Add...</div>
+                    <div class="mip-context-item" data-act="edit">Edit...</div>
+                    <div class="mip-context-item" data-act="remove">Remove</div>
+                    `;
+
+                    // Добавляем разделитель и одну динамическую команду статуса
+                    menuHtml += `<div class="mip-context-separator"></div>`;
+                    if (isEnabled) {
+                        menuHtml += `<div class="mip-context-item" data-act="disable">Disable user</div>`;
+                    } else {
+                        menuHtml += `<div class="mip-context-item" data-act="enable">Enable user</div>`;
+                    }
+
+                    // Финальный неактивный пункт
+                    menuHtml += `<div class="mip-context-separator"></div>
+                    <div class="mip-context-item disabled">Disable 2-step verification</div>`;
+
+
+                    menu.innerHTML = menuHtml;
                     document.body.appendChild(menu);
+
                     menu.onclick = (ev) => {
                         const item = ev.target.closest("[data-act]");
                         if (item) this.cmd(item.dataset.act, row);
                     };
                 }
+
             };
             tbody.ondblclick = (e) => this.cmd("edit", e.target.closest(".mip-row"));
             tbody.oncontextmenu = (e) => e.preventDefault();
             document.onclick = (e) => e.target.closest("#mip-active-menu") || this.closeMenu();
 
-            // Делегирование кликов для панели кнопок в подвале
             document.getElementById("mip-actions").onclick = (e) => {
                 const btn = e.target.closest("[data-act]");
                 if (btn) this.cmd(btn.dataset.act, tbody.querySelector(".mip-row.selected"));
@@ -88,10 +112,22 @@ const mip_users = {
     },
     closeMenu: () => document.getElementById("mip-active-menu")?.remove(),
 
-    cmd(act, row) {
+    async cmd(act, row) {
         this.closeMenu();
         if (act !== "add" && !row) return alert("Пожалуйста, выберите пользователя в таблице.");
-        if (act !== "add" && row.dataset.user === "admin") return alert(`Нельзя ${act === "edit" ? "редактировать" : "удалить"} администратора!`);
+        if (act !== "add" && row.dataset.user === "admin") return alert(`Нельзя изменять или удалять администратора!`);
+
+        // Обработка новых команд переключения статуса
+        if (act === "enable" || act === "disable") {
+            const isEnable = act === "enable";
+            const res = await (await fetch("/api/mip/users/status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ login: row.dataset.user, enabled: isEnable })
+            })).json();
+            res.success ? this.init() : alert(`Ошибка: ${res.message}`);
+            return;
+        }
 
         if (act === "remove") {
             this.win(true, 'Confirmation', `<div class="mip-confirm-icon-question">?</div><div class="mip-confirm-text">Are you sure you want to remove user "${row.dataset.user}"?</div>`, async () => {
@@ -117,12 +153,12 @@ const mip_users = {
                 if (!vals.login || (!isEdit && !vals.password) || !vals.firstname || !vals.lastname) return alert("Заполните обязательные поля!");
 
                 const res = await (await fetch(isEdit ? "/api/mip/users/edit" : "/api/mip/users/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(vals) })).json();
-                res.success ? this.init() : alert(`Ошибка: ${res.message}`);
+                if (res.success) { this.init(); return true; }
+                alert(`Ошибка: ${res.message}`); return false;
             });
         }
     },
 
-    // Универсальный метод для генерации окон (и модальных форм, и конфирмов)
     win(isConfirm, title, bodyHtml, onOk) {
         const id = "mip-win-overlay", cls = isConfirm ? "mip-confirm-window" : "mip-modal-window";
         if (document.getElementById(id)) return;

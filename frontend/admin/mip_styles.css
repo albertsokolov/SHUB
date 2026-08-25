@@ -477,3 +477,11 @@
     line-height: 14px;
     word-break: break-word;
 }
+/* Стилизация строки отключенного пользователя */
+.mip-row-disabled {
+    color: #888888 !important;
+    font-style: italic;
+}
+.mip-row-disabled td {
+    color: #888888 !important;
+}

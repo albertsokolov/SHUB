@@ -19,7 +19,8 @@ pub fn router() -> Router<DbState> {
     .route("/users", get(get_mip_users_handler))
     .route("/users/add", post(add_user_handler))
     .route("/users/remove", post(delete_user_handler))
-    .route("/users/edit", post(edit_user_handler)) // Новый роут для редактирования
+    .route("/users/edit", post(edit_user_handler))
+    .route("/users/status", post(set_status_handler))
 }
 
 #[derive(Serialize)]
@@ -28,6 +29,7 @@ pub struct MipUser {
     pub full_name: String,
     pub description: String,
     pub groups: String,
+    pub enabled: bool, // Добавили поле
 }
 
 #[derive(Deserialize)]
@@ -39,6 +41,12 @@ pub struct CreateUserRequest {
     pub email: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct SetStatusRequest {
+    pub login: String,
+    pub enabled: bool,
+}
+
 #[derive(Serialize)]
 pub struct UserActionResponse {
     pub success: bool,
@@ -48,17 +56,20 @@ pub struct UserActionResponse {
 // Получение списка пользователей
 pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoResponse {
     let conn = db.lock().unwrap();
+    // Достаем из таблицы user_tab колонку enabled
     let mut stmt = conn
-    .prepare("SELECT login, first_name || ' ' || last_name, email, '—' FROM user_tab")
+    .prepare("SELECT login, first_name || ' ' || last_name, email, '—', enabled FROM user_tab")
     .unwrap();
 
     let user_iter = stmt
     .query_map([], |row| {
+        let is_enabled: i32 = row.get(4)?; // Считываем 0 или 1
         Ok(MipUser {
             username: row.get(0)?,
            full_name: row.get(1)?,
            description: row.get(2)?,
            groups: row.get(3)?,
+           enabled: is_enabled == 1, // Конвертируем в bool
         })
     })
     .unwrap();
@@ -69,9 +80,9 @@ pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoRespon
             users.push(u);
         }
     }
-
     Json(users)
 }
+
 
 // Обработчик добавления нового пользователя
 pub async fn add_user_handler(
@@ -152,6 +163,29 @@ pub async fn delete_user_handler(
         }
     }
 }
+
+// обработчик изменения статуса (включает/выключает запись)
+pub async fn set_status_handler(
+    State(db): State<DbState>,
+                                Json(payload): Json<SetStatusRequest>,
+) -> impl IntoResponse {
+    let conn = db.lock().unwrap();
+
+    if payload.login == "admin" {
+        return Json(UserActionResponse { success: false, message: "Cannot disable admin".to_string() });
+    }
+
+    match db_tools::set_user_status(&conn, &payload.login, payload.enabled) {
+        Ok(rows) if rows > 0 => {
+            logger::info(APP_NAME, &format!("Статус пользователя {} изменен на enabled={}", payload.login, payload.enabled));
+            Json(UserActionResponse { success: true, message: "Status updated".to_string() })
+        }
+        Ok(_) => Json(UserActionResponse { success: false, message: "User not found".to_string() }),
+        Err(e) => Json(UserActionResponse { success: false, message: e.to_string() }),
+    }
+}
+
+
 // Обработчик изменения данных пользователя (POST /api/mip/users/edit)
 pub async fn edit_user_handler(
     State(db): State<DbState>,

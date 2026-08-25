@@ -56,7 +56,8 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
             email TEXT UNIQUE,
             avatar BLOB,
             login TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1 -- Добавили новое поле
     )",
     [],
     )?;
@@ -180,19 +181,28 @@ pub fn add_user(
     email: Option<String>
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password)
-    VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password, enabled)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)", // Передаем 1 по умолчанию
                  (
                      first_name,
                   last_name,
-                  None::<String>,       // Должность пока оставляем пустой
-                  email,                // Опциональный email
-                  None::<Vec<u8>>,      // Аватар отсутствует при создании
+                  None::<String>,
+                  email,
+                  None::<Vec<u8>>,
                   login,
                   password,
                  ),
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+// Новая функция для изменения статуса пользователя в db_tools.rs
+pub fn set_user_status(conn: &Connection, login: &str, enabled: bool) -> Result<usize> {
+    if login == "admin" {
+        return Ok(0); // Запрещаем отключать системного администратора
+    }
+    let status_val = if enabled { 1 } else { 0 };
+    conn.execute("UPDATE user_tab SET enabled = ? WHERE login = ?", (status_val, login))
 }
 pub fn delete_user(conn: &Connection, login: &str) -> Result<usize> {
     // Запрещаем удаление системного администратора
