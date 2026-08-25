@@ -75,32 +75,73 @@ function renderInterface() {
 }
 
 /**
- * УПРАВЛЕНИЕ ТАБАМИ — Переключение подпанелей меню
+ * УПРАВЛЕНИЕ ТАБАМИ — Переключение подпанелей меню с запоминанием состояния (СТАБИЛЬНАЯ ВЕРСИЯ)
  */
 function initMenuTabs() {
     const tabs = document.querySelectorAll(".x-tab-strip li");
     const subPanels = document.querySelectorAll(".menu-sub-panel");
 
     tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-            tabs.forEach(t => t.classList.remove("active"));
-            tab.classList.add("active");
+        tab.addEventListener("click", (e) => {
+            // ОСТАНОВКА ВСПЛЫТИЯ: Клик по табу обрабатывается только здесь и не летит дальше
+            e.stopPropagation();
 
-            const target = tab.getAttribute('data-target');
-            const targetPanelId = `menu_panel_${target}`;
-
-            subPanels.forEach(panel => {
-                if (panel.id === targetPanelId) {
-                    panel.classList.remove("hide");
-                    panel.classList.add("active");
-                } else {
-                    panel.classList.remove("active");
-                    panel.classList.add("hide");
+            // ЗАЩИТА: Блокируем любое переключение разделов, если открыто окно добавления или редактирования
+            if (document.getElementById("mip-user-modal-overlay") ||
+                document.getElementById("mip-user-edit-overlay")) {
+                alert("Пожалуйста, завершите текущую операцию добавления или редактирования перед переключением раздела!");
+            return;
                 }
-            });
+
+                // Проверяем, активен ли этот таб прямо сейчас
+                const isAlreadyActive = tab.classList.contains("active");
+
+                tabs.forEach(t => t.classList.remove("active"));
+                tab.classList.add("active");
+
+                const target = tab.getAttribute('data-target');
+                const targetPanelId = `menu_panel_${target}`;
+
+                subPanels.forEach(panel => {
+                    if (panel.id === targetPanelId) {
+                        panel.classList.remove("hide");
+                        panel.classList.add("active");
+                    } else {
+                        panel.classList.remove("active");
+                        panel.classList.add("hide");
+                    }
+                });
+
+                // 1. ЗАПОМИНАЕМ, КАКОЙ ГЛАВНЫЙ СИНИЙ ТАБ СТАЛ АКТИВНЫМ
+                localStorage.setItem('shub_active_tab', target);
+
+                // 2. ВОССТАНАВЛИВАЕМ ПУНКТ ИЛИ АВТОМАТИЧЕСКИ ВЫБИРАЕМ ПЕРВЫЙ
+                const activePanel = document.getElementById(targetPanelId);
+                if (!activePanel) return;
+
+                const menuItems = activePanel.querySelectorAll("li");
+            if (menuItems.length === 0) return;
+
+            const savedItemText = localStorage.getItem(`shub_sub_item_for_${target}`);
+            let targetItem = null;
+
+            if (savedItemText) {
+                targetItem = Array.from(menuItems).find(li => li.textContent.trim() === savedItemText);
+            }
+
+            // ПРАВИЛО: Если информации в памяти нет — выбираем САМЫЙ ПЕРВЫЙ пункт меню
+            if (!targetItem) {
+                targetItem = menuItems[0];
+            }
+
+            // Кликаем по подпункту ТОЛЬКО если мы физически перешли на ДРУГОЙ синий таб
+            if (targetItem && !isAlreadyActive) {
+                targetItem.click();
+            }
         });
     });
 }
+
 
 /**
  * ЛОГИКА КЛИКОВ ПО ДЕРЕВУ МЕНЮ — Формирует красивый URL со слешем

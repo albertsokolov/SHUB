@@ -387,3 +387,93 @@
     line-height: 14px;
     word-break: break-word;
 }
+/* Тело формы */
+.mip-modal-body {
+    background-color: #ffffff;
+    margin: 6px; /* Внутренний отступ от границ ExtJS-окна */
+    border: 1px solid #99bbe8;
+    padding: 15px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Элементы формы ввода */
+.mip-form-group {
+    display: flex;
+    align-items: center;
+}
+
+.mip-form-group label {
+    width: 100px; /* Фиксированное выравнивание подписей */
+    color: #333;
+    flex-shrink: 0;
+}
+
+.mip-form-input {
+    flex: 1;
+    padding: 2px 4px;
+    border: 1px solid #a3bae9;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    outline: none;
+    height: 20px;
+}
+.mip-form-input:focus {
+    border: 1px solid #15428b !important;
+}
+
+/* Подвал окна с кнопками сохранения/отмены */
+.mip-modal-footer {
+    padding: 0 6px 6px 6px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+/* ==========================================================================
+ *   КАСТОМНОЕ ОКНО ПОДТВЕРЖДЕНИЯ (CONFIRM ACTION)
+ *   ========================================================================== */
+.mip-confirm-window {
+    background-color: #cedeff;
+    width: 330px;
+    border: 1px solid #15428b;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+}
+
+.mip-confirm-body {
+    background-color: #ffffff;
+    margin: 6px;
+    border: 1px solid #99bbe8;
+    padding: 15px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Круглая иконка вопроса в стиле Windows */
+.mip-confirm-icon-question {
+    width: 24px;
+    height: 24px;
+    background: #fff;
+    border: 2px solid #3b5998;
+    border-radius: 50%;
+    color: #3b5998;
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.mip-confirm-text {
+    color: #000;
+    line-height: 14px;
+    word-break: break-word;
+}
