@@ -1,7 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
     // ПОЛНОЕ ОТКЛЮЧЕНИЕ МЕНЮ БРАУЗЕРА НА ВСЕЙ СТРАНИЦЕ АДМИНКИ
     document.addEventListener("contextmenu", e => e.preventDefault());
-    // 1. Генерируем каркас интерфейса, динамически внедряя изолированные файлы меню
+
+    // 1. Генерируем каркас интерфейса
     renderInterface();
 
     // 2. Инициализируем интерактивную логику, табы и ресайзер
@@ -10,10 +11,56 @@ document.addEventListener("DOMContentLoaded", () => {
     initWindowResizeDebounce();
     initMenuTreeClicks();
 
-    // 3. Запускаем хэш-роутер для отслеживания текущего адреса панели (например, #users)
+    // 3. Запускаем хэш-роутер
     window.addEventListener("hashchange", handleHashRouter);
-    handleHashRouter(); // Проверка хэша при первичной загрузке страницы
+
+    // 4. ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ПОСЛЕ ПЕРЕЗАГРУЗКИ (F5)
+    // Считываем последний активный синий таб (дефолт — 'status')
+    const savedTab = localStorage.getItem('shub_active_tab') || 'status';
+    const tabEl = document.querySelector(`.x-tab-strip li[data-target="${savedTab}"]`);
+
+    if (tabEl) {
+        // Убираем дефолтную подсветку со всех табов и панелей
+        document.querySelectorAll(".x-tab-strip li").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".menu-sub-panel").forEach(p => {
+            p.classList.remove("active");
+            p.classList.add("hide");
+        });
+
+        // Подсвечиваем сохраненный таб и открываем его подпанель
+        tabEl.classList.add("active");
+        const panelEl = document.getElementById(`menu_panel_${savedTab}`);
+        if (panelEl) {
+            panelEl.classList.remove("hide");
+            panelEl.classList.add("active");
+
+            // Ищем сохраненный пункт меню для этого таба
+            const menuItems = panelEl.querySelectorAll("li");
+            if (menuItems.length > 0) {
+                const savedAction = localStorage.getItem(`shub_sub_item_for_${savedTab}`);
+                let targetItem = null;
+
+                if (savedAction) {
+                    targetItem = Array.from(menuItems).find(li => li.getAttribute("data-action") === savedAction);
+                }
+
+                // Если информации в памяти нет — берем самый ВЕРХНИЙ пункт
+                if (!targetItem) {
+                    targetItem = menuItems[0];
+                }
+
+                // Эмулируем клик по пункту меню, чтобы обновить хэш в URL и отрендерить MIP-панель
+                if (targetItem) {
+                    targetItem.click();
+                }
+            }
+        }
+    } else {
+        // Если localStorage пуст, просто инициализируем роутер по умолчанию
+        handleHashRouter();
+    }
 });
+
 
 /**
  * ГЕНЕРАЦИЯ ИНТЕРФЕЙСА
