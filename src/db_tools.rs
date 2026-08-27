@@ -4,12 +4,11 @@ use serde::Serialize;
 #[derive(Serialize, Clone)]
 pub struct User {
     pub id: i64,
-    pub first_name: String,
-    pub last_name: String,
-    pub position: Option<String>,
+    pub username: String,
+    pub fullname: String,
     pub email: Option<String>,
-    pub avatar: Option<Vec<u8>>,
-    pub login: String,
+    pub description: Option<String>,
+    pub enabled: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -65,16 +64,16 @@ pub fn fetch_all_groups(conn: &Connection) -> Result<Vec<Group>> {
 }
 
 pub fn fetch_all_users(conn: &Connection) -> Result<Vec<User>> {
-    let mut stmt = conn.prepare("SELECT id, first_name, last_name, position, email, avatar, login FROM user_tab ORDER BY last_name ASC")?;
+    let mut stmt = conn.prepare("SELECT id, username, fullname, email, description, enabled FROM user_tab ORDER BY username ASC")?;
     let user_iter = stmt.query_map([], |row| {
+        let is_enabled: i32 = row.get(5)?;
         Ok(User {
             id: row.get(0)?,
-           first_name: row.get(1)?,
-           last_name: row.get(2)?,
-           position: row.get(3)?,
-           email: row.get(4)?,
-           avatar: row.get(5)?,
-           login: row.get(6)?,
+           username: row.get(1)?,
+           fullname: row.get(2)?,
+           email: row.get(3)?,
+           description: row.get(4)?,
+           enabled: is_enabled == 1,
         })
     })?;
 
@@ -87,64 +86,62 @@ pub fn fetch_all_users(conn: &Connection) -> Result<Vec<User>> {
 
 pub fn add_user(
     conn: &Connection,
-    login: &str,
+    username: &str,
     password: &str,
-    first_name: &str,
-    last_name: &str,
-    email: Option<String>
+    fullname: &str,
+    email: Option<String>,
+    description: Option<String>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password, enabled)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO user_tab (username, fullname, email, description, password, enabled)
+    VALUES (?, ?, ?, ?, ?, 1)",
                  (
-                     first_name,
-                  last_name,
-                  None::<String>,
+                     username,
+                  fullname,
                   email,
-                  None::<Vec<u8>>,
-                  login,
+                  description,
                   password,
                  ),
     )?;
     Ok(conn.last_insert_rowid())
 }
 
-pub fn delete_user(conn: &Connection, login: &str) -> Result<usize> {
-    if login == "admin" {
+pub fn delete_user(conn: &Connection, username: &str) -> Result<usize> {
+    if username == "admin" {
         return Ok(0);
     }
-    conn.execute("DELETE FROM user_tab WHERE login = ?", [login])
+    conn.execute("DELETE FROM user_tab WHERE username = ?", [username])
 }
 
 pub fn update_user(
     conn: &Connection,
-    login: &str,
+    username: &str,
     password: &str,
-    first_name: &str,
-    last_name: &str,
-    email: Option<String>
+    fullname: &str,
+    email: Option<String>,
+    description: Option<String>,
 ) -> Result<usize> {
-    if login == "admin" {
+    if username == "admin" {
         return Ok(0);
     }
 
     if password.is_empty() {
         conn.execute(
-            "UPDATE user_tab SET first_name = ?, last_name = ?, email = ? WHERE login = ?",
-            (first_name, last_name, email, login),
+            "UPDATE user_tab SET fullname = ?, email = ?, description = ? WHERE username = ?",
+            (fullname, email, description, username),
         )
     } else {
         conn.execute(
-            "UPDATE user_tab SET first_name = ?, last_name = ?, email = ?, password = ? WHERE login = ?",
-            (first_name, last_name, email, password, login),
+            "UPDATE user_tab SET fullname = ?, email = ?, description = ?, password = ? WHERE username = ?",
+            (fullname, email, description, password, username),
         )
     }
 }
 
-pub fn set_user_status(conn: &Connection, login: &str, enabled: bool) -> Result<usize> {
-    if login == "admin" {
+pub fn set_user_status(conn: &Connection, username: &str, enabled: bool) -> Result<usize> {
+    if username == "admin" {
         return Ok(0);
     }
     let status_val = if enabled { 1 } else { 0 };
-    conn.execute("UPDATE user_tab SET enabled = ? WHERE login = ?", (status_val, login))
+    conn.execute("UPDATE user_tab SET enabled = ? WHERE username = ?", (status_val, username))
 }

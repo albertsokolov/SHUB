@@ -42,6 +42,7 @@ async fn main() {
     let conn = Connection::open(&*DB_PATH).expect("Нет доступа к файлу БД");
     conn.pragma_update(None, "key", "12344").expect("Ошибка инициализации SQLCipher");
 
+    // Вызываем инициализацию и сидинг структуры из нового изолированного модуля db_init
     db_init::init_tables(&conn).expect("Ошибка структуры таблиц");
     db_init::seed_default_data(&conn).expect("Ошибка дефолтных данных");
 
@@ -52,7 +53,7 @@ async fn main() {
     .route("/login", post(login_handler))
     .route("/groups", get(get_groups_handler))
     .route("/users", get(get_users_handler))
-    .nest("/mip", mip_users::router()) // Перенаправляет все запросы /api/mip/* внутрь src/mip_users.rs
+    .nest("/mip", mip_users::router())
     .with_state(db_state);
 
     let app = Router::new()
@@ -101,15 +102,19 @@ async fn login_handler(
     logger::info(APP_NAME, &format!("Попытка входа для пользователя: {}", payload.login));
     let conn = db.lock().unwrap();
 
-    let mut stmt = conn.prepare("SELECT password, login FROM user_tab WHERE login = ?").unwrap();
+    // SQL-запрос обновлен: проверяем username и то, что учетная запись не отключена (enabled = 1)
+    let mut stmt = conn.prepare("SELECT password, username, enabled FROM user_tab WHERE username = ?").unwrap();
     let user_res = stmt.query_row([&payload.login], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i32>(2)?))
     });
 
     match user_res {
-        Ok((db_password, login)) => {
+        Ok((db_password, username, enabled)) => {
+            if enabled != 1 {
+                return Json(LoginResponse { success: false, message: "Учетная запись заблокирована".to_string() });
+            }
             if db_password == payload.password {
-                if login == "admin" {
+                if username == "admin" {
                     let mut cookie = Cookie::new("admin_token", "secret_admin_val");
                     cookie.set_path("/");
                     cookies.add(cookie);
@@ -134,4 +139,3 @@ async fn get_groups_handler(State(db): State<DbState>) -> impl IntoResponse {
 async fn get_users_handler(State(db): State<DbState>) -> impl IntoResponse {
     Json(db_tools::fetch_all_users(&db.lock().unwrap()).unwrap())
 }
-

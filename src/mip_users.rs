@@ -13,7 +13,7 @@ use crate::logger;
 type DbState = Arc<Mutex<Connection>>;
 static APP_NAME: &str = "SHUB";
 
-// Суб-роутер для группировки эндпоинтов MIP-панели
+// Суб-роутер для группировки эндпоинтов MIP-панели пользователей
 pub fn router() -> Router<DbState> {
     Router::new()
     .route("/users", get(get_mip_users_handler))
@@ -29,22 +29,16 @@ pub struct MipUser {
     pub full_name: String,
     pub description: String,
     pub groups: String,
-    pub enabled: bool, // Добавили поле
+    pub enabled: bool,
 }
 
 #[derive(Deserialize)]
 pub struct CreateUserRequest {
-    pub login: String,
+    pub login: String,      // Прилетает с фронтенда (соответствует Username/Username)
+    pub firstname: String,  // Прилетает с фронтенда как First Name
+    pub lastname: String,   // Прилетает с фронтенда как Last Name
+    pub email: Option<String>, // Прилетает с фронтенда из поля Email / Desc
     pub password: String,
-    pub firstname: String,
-    pub lastname: String,
-    pub email: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct SetStatusRequest {
-    pub login: String,
-    pub enabled: bool,
 }
 
 #[derive(Serialize)]
@@ -53,23 +47,37 @@ pub struct UserActionResponse {
     pub message: String,
 }
 
-// Получение списка пользователей
+#[derive(Deserialize)]
+pub struct DeleteUserRequest {
+    pub login: String,
+}
+
+#[derive(Deserialize)]
+pub struct SetStatusRequest {
+    pub login: String,
+    pub enabled: bool,
+}
+
+// Получение списка пользователей для ExtJS-таблицы
 pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoResponse {
     let conn = db.lock().unwrap();
-    // Достаем из таблицы user_tab колонку enabled
+
+    // Выбираем данные в строгом соответствии с новой схемой
     let mut stmt = conn
-    .prepare("SELECT login, first_name || ' ' || last_name, email, '—', enabled FROM user_tab")
+    .prepare("SELECT username, fullname, description, enabled FROM user_tab")
     .unwrap();
 
     let user_iter = stmt
     .query_map([], |row| {
-        let is_enabled: i32 = row.get(4)?; // Считываем 0 или 1
+        let is_enabled: i32 = row.get(3)?;
+        // В рамках текущего вывода групп временно ставим прочерк,
+        // пока не подключили вывод связей из member_tab и group_tab
         Ok(MipUser {
             username: row.get(0)?,
            full_name: row.get(1)?,
-           description: row.get(2)?,
-           groups: row.get(3)?,
-           enabled: is_enabled == 1, // Конвертируем в bool
+           description: row.get::<_, Option<String>>(2)?.unwrap_or_else(|| "—".to_string()),
+           groups: "—".to_string(),
+           enabled: is_enabled == 1,
         })
     })
     .unwrap();
@@ -80,9 +88,9 @@ pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoRespon
             users.push(u);
         }
     }
+
     Json(users)
 }
-
 
 // Обработчик добавления нового пользователя
 pub async fn add_user_handler(
@@ -91,40 +99,36 @@ pub async fn add_user_handler(
 ) -> impl IntoResponse {
     let conn = db.lock().unwrap();
 
-    let email_opt = payload.email
-    .as_deref()
-    .map(|s| s.trim())
-    .filter(|s| !s.is_empty())
-    .map(|s| s.to_string());
+    // Формируем fullname из полей имени и фамилии
+    let full_name = format!("{} {}", payload.firstname.trim(), payload.lastname.trim());
+
+    // Используем email/desc из формы как описание и как email (для совместимости схемы)
+    let desc_opt = payload.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()).map(|s| s.to_string());
+    let email_opt = desc_opt.clone();
 
     match db_tools::add_user(
         &conn,
         &payload.login,
         &payload.password,
-        &payload.firstname,
-        &payload.lastname,
-        email_opt
+        &full_name,
+        email_opt,
+        desc_opt,
     ) {
         Ok(_) => {
             logger::info(APP_NAME, &format!("Успешно добавлен пользователь: {}", payload.login));
             Json(UserActionResponse {
                 success: true,
-                message: "User added".to_string()
+                message: "User added".to_string(),
             })
         }
         Err(e) => {
             logger::error(APP_NAME, &format!("Ошибка добавления пользователя {}: {}", payload.login, e));
             Json(UserActionResponse {
                 success: false,
-                message: e.to_string()
+                message: e.to_string(),
             })
         }
     }
-}
-// Маленькая структура, чтобы не тянуть внешнюю библиотеку serde_json в main.rs
-#[derive(Deserialize)]
-pub struct DeleteUserRequest {
-    pub login: String,
 }
 
 // Обработчик удаления пользователя
@@ -133,38 +137,86 @@ pub async fn delete_user_handler(
                                  Json(payload): Json<DeleteUserRequest>,
 ) -> impl IntoResponse {
     let conn = db.lock().unwrap();
-    let login = &payload.login;
+    let username = &payload.login;
 
-    if login == "admin" {
+    if username == "admin" {
         return Json(UserActionResponse {
             success: false,
-            message: "Cannot delete system administrator".to_string()
+            message: "Cannot delete system administrator".to_string(),
         });
     }
 
-    match db_tools::delete_user(&conn, login) {
+    match db_tools::delete_user(&conn, username) {
         Ok(rows) if rows > 0 => {
-            logger::info(APP_NAME, &format!("Успешно удален пользователь: {}", login));
+            logger::info(APP_NAME, &format!("Успешно удален пользователь: {}", username));
             Json(UserActionResponse {
                 success: true,
-                message: "User removed".to_string()
+                message: "User removed".to_string(),
             })
         }
         Ok(_) => Json(UserActionResponse {
             success: false,
-            message: "User not found".to_string()
+            message: "User not found".to_string(),
         }),
         Err(e) => {
-            logger::error(APP_NAME, &format!("Ошибка удаления пользователя {}: {}", login, e));
+            logger::error(APP_NAME, &format!("Ошибка удаления пользователя {}: {}", username, e));
             Json(UserActionResponse {
                 success: false,
-                message: e.to_string()
+                message: e.to_string(),
             })
         }
     }
 }
 
-// обработчик изменения статуса (включает/выключает запись)
+// Обработчик изменения данных пользователя
+pub async fn edit_user_handler(
+    State(db): State<DbState>,
+                               Json(payload): Json<CreateUserRequest>,
+) -> impl IntoResponse {
+    let conn = db.lock().unwrap();
+    let username = &payload.login;
+
+    if username == "admin" {
+        return Json(UserActionResponse {
+            success: false,
+            message: "Cannot modify system administrator".to_string(),
+        });
+    }
+
+    let full_name = format!("{} {}", payload.firstname.trim(), payload.lastname.trim());
+    let desc_opt = payload.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()).map(|s| s.to_string());
+    let email_opt = desc_opt.clone();
+
+    match db_tools::update_user(
+        &conn,
+        username,
+        &payload.password,
+        &full_name,
+        email_opt,
+        desc_opt,
+    ) {
+        Ok(rows) if rows > 0 => {
+            logger::info(APP_NAME, &format!("Успешно обновлен пользователь: {}", username));
+            Json(UserActionResponse {
+                success: true,
+                message: "User updated".to_string(),
+            })
+        }
+        Ok(_) => Json(UserActionResponse {
+            success: false,
+            message: "User not found".to_string(),
+        }),
+        Err(e) => {
+            logger::error(APP_NAME, &format!("Ошибка обновления пользователя {}: {}", username, e));
+            Json(UserActionResponse {
+                success: false,
+                message: e.to_string(),
+            })
+        }
+    }
+}
+
+// Обработчик изменения статуса (активен / заблокирован)
 pub async fn set_status_handler(
     State(db): State<DbState>,
                                 Json(payload): Json<SetStatusRequest>,
@@ -172,69 +224,27 @@ pub async fn set_status_handler(
     let conn = db.lock().unwrap();
 
     if payload.login == "admin" {
-        return Json(UserActionResponse { success: false, message: "Cannot disable admin".to_string() });
+        return Json(UserActionResponse {
+            success: false,
+            message: "Cannot disable admin".to_string(),
+        });
     }
 
     match db_tools::set_user_status(&conn, &payload.login, payload.enabled) {
         Ok(rows) if rows > 0 => {
             logger::info(APP_NAME, &format!("Статус пользователя {} изменен на enabled={}", payload.login, payload.enabled));
-            Json(UserActionResponse { success: true, message: "Status updated".to_string() })
-        }
-        Ok(_) => Json(UserActionResponse { success: false, message: "User not found".to_string() }),
-        Err(e) => Json(UserActionResponse { success: false, message: e.to_string() }),
-    }
-}
-
-
-// Обработчик изменения данных пользователя (POST /api/mip/users/edit)
-pub async fn edit_user_handler(
-    State(db): State<DbState>,
-                               Json(payload): Json<CreateUserRequest>,
-) -> impl IntoResponse {
-    let conn = db.lock().unwrap();
-    let login = &payload.login;
-
-    if login == "admin" {
-        return Json(UserActionResponse {
-            success: false,
-            message: "Cannot modify system administrator".to_string()
-        });
-    }
-
-    let email_opt = payload.email
-    .as_deref()
-    .map(|s| s.trim())
-    .filter(|s| !s.is_empty())
-    .map(|s| s.to_string());
-
-    // Внимательно проверяем ветки match: каждая ДОЛЖНА возвращать Json(UserActionResponse)
-    match db_tools::update_user(
-        &conn,
-        login,
-        &payload.password,
-        &payload.firstname,
-        &payload.lastname,
-        email_opt
-    ) {
-        Ok(rows) if rows > 0 => {
-            logger::info(APP_NAME, &format!("Успешно обновлен пользователь: {}", login));
             Json(UserActionResponse {
                 success: true,
-                message: "User updated".to_string()
+                message: "Status updated".to_string(),
             })
         }
-        Ok(_) => {
-            Json(UserActionResponse {
-                success: false,
-                message: "User not found".to_string()
-            })
-        }
-        Err(e) => {
-            logger::error(APP_NAME, &format!("Ошибка обновления пользователя {}: {}", login, e));
-            Json(UserActionResponse {
-                success: false,
-                message: e.to_string()
-            })
-        }
+        Ok(_) => Json(UserActionResponse {
+            success: false,
+            message: "User not found".to_string(),
+        }),
+        Err(e) => Json(UserActionResponse {
+            success: false,
+            message: e.to_string(),
+        }),
     }
 }
