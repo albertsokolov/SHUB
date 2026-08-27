@@ -1,5 +1,5 @@
 /**
- * Оптимизированный модуль управления MIP-панелью пользователей (SHUB Core)
+ * Оптимизированный модуль управления MIP-панелью пользователей (SHUB Core) — ЧАСТЬ 1
  */
 const mip_users = {
     render: () => `
@@ -11,7 +11,13 @@ const mip_users = {
     </div>
     <div class="mip-table-container">
     <table class="mip-grid">
-    <thead><tr><th style="width:25%">Username <span>▲</span></th><th style="width:25%">Full Name</th><th style="width:30%">Description</th><th style="width:20%">Groups</th></tr></thead>
+    <thead>
+    <tr>
+    <th style="width:30%">Username <span>▲</span></th>
+    <th style="width:35%">Full Name</th>
+    <th style="width:35%">Description</th>
+    </tr>
+    </thead>
     <tbody id="mip-users-tbody"></tbody>
     </table>
     </div>
@@ -43,8 +49,41 @@ const mip_users = {
             <span class="icon icon-user" style="width:16px;height:16px;background-size:900% 500%!important;margin:0;flex-shrink:0;opacity:${u.enabled ? 1 : 0.4}"></span>
             <span>${this.esc(u.username)}</span>
             </td>
-            <td>${this.esc(u.full_name)}</td><td>${this.esc(u.description)}</td><td>${this.esc(u.groups)}</td>
+            <td>${this.esc(u.full_name)}</td>
+            <td>${this.esc(u.description)}</td>
             </tr>`).join('');
+
+            // ЛОГИКА ЖИВОЙ ФИЛЬТРАЦИИ И СКРЫТИЯ ПОЛЬЗОВАТЕЛЕЙ
+            const filterInput = document.getElementById("mip-user-filter");
+            const hideDisabledCheckbox = document.getElementById("hide-disabled");
+
+            const applyFilters = () => {
+                const query = filterInput.value.toLowerCase().trim();
+                const shouldHideDisabled = hideDisabledCheckbox.checked;
+                const rows = tbody.querySelectorAll(".mip-row");
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const username = row.dataset.user.toLowerCase();
+                    const fullname = row.dataset.full.toLowerCase();
+                    const description = row.dataset.desc.toLowerCase();
+                    const isEnabled = row.dataset.enabled === "true";
+
+                    const matchesQuery = username.includes(query) || fullname.includes(query) || description.includes(query);
+                    const matchesDisabledCondition = !(shouldHideDisabled && !isEnabled);
+
+                    if (matchesQuery && matchesDisabledCondition) {
+                        row.style.display = "";
+                        visibleCount++;
+                    } else {
+                        row.style.display = "none";
+                    }
+                });
+                document.getElementById("mip-user-count").innerText = visibleCount;
+            };
+
+            filterInput.oninput = applyFilters;
+            hideDisabledCheckbox.onchange = applyFilters;
 
             tbody.onmousedown = (e) => {
                 const row = e.target.closest(".mip-row");
@@ -55,22 +94,17 @@ const mip_users = {
                     e.preventDefault();
                     this.closeMenu();
 
-                    // Считываем текущий статус из data-атрибута строки ("true" или "false")
                     const isEnabled = row.dataset.enabled === "true";
-
                     const menu = document.createElement("div");
                     Object.assign(menu, { id: "mip-active-menu", className: "mip-context-menu" });
                     menu.style.cssText = `left:${e.clientX}px; top:${e.clientY}px;`;
 
-                    // Формируем базовые команды (Add, Edit, Remove)
-                    // Находим, где генерируется переменная menuHtml, и заменяем на этот чистый код:
                     let menuHtml = `
                     <div class="mip-context-item" data-act="add">Add...</div>
                     <div class="mip-context-item" data-act="edit">Edit...</div>
                     <div class="mip-context-item" data-act="remove">Remove</div>
                     `;
 
-                    // Добавляем разделитель и одну динамическую команду статуса
                     menuHtml += `<div class="mip-context-separator"></div>`;
                     if (isEnabled) {
                         menuHtml += `<div class="mip-context-item" data-act="disable">Disable user</div>`;
@@ -78,10 +112,8 @@ const mip_users = {
                         menuHtml += `<div class="mip-context-item" data-act="enable">Enable user</div>`;
                     }
 
-                    // Финальный неактивный пункт
                     menuHtml += `<div class="mip-context-separator"></div>
                     <div class="mip-context-item disabled">Disable 2-step verification</div>`;
-
 
                     menu.innerHTML = menuHtml;
                     document.body.appendChild(menu);
@@ -91,7 +123,6 @@ const mip_users = {
                         if (item) this.cmd(item.dataset.act, row);
                     };
                 }
-
             };
             tbody.ondblclick = (e) => this.cmd("edit", e.target.closest(".mip-row"));
             tbody.oncontextmenu = (e) => e.preventDefault();
@@ -102,10 +133,10 @@ const mip_users = {
                 if (btn) this.cmd(btn.dataset.act, tbody.querySelector(".mip-row.selected"));
             };
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="4" style="color:red;padding:10px">Ошибка: ${err}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" style="color:red;padding:10px">Ошибка: ${err}</td></tr>`;
         }
     },
-
+    // Модуль управления MIP-панелью пользователей (SHUB Core) — ЧАСТЬ 2
     sel: (tbody, row) => {
         tbody.querySelectorAll(".mip-row").forEach(r => r.classList.remove("selected"));
         row.classList.add("selected");
@@ -117,7 +148,6 @@ const mip_users = {
         if (act !== "add" && !row) return alert("Пожалуйста, выберите пользователя в таблице.");
         if (act !== "add" && row.dataset.user === "admin") return alert(`Нельзя изменять или удалять администратора!`);
 
-        // Обработка новых команд переключения статуса
         if (act === "enable" || act === "disable") {
             const isEnable = act === "enable";
             const res = await (await fetch("/api/mip/users/status", {
@@ -146,7 +176,7 @@ const mip_users = {
                 { id: "password", label: "Password:", type: "password", val: "", ph: isEdit ? "Leave blank to keep" : "" }
             ];
 
-            const html = fields.map(x => `<div class="mip-form-group"><label>${x.label}</label><input type="${x.type}" id="m-${x.id}" class="mip-form-input" value="${x.val}" ${x.dis ? 'disabled style="background:#e9e9e9;color:#666"' : ''} placeholder="${x.ph || ''}" autocomplete="off"></div>`).join('');
+            const html = fields.map(x => `<div class="mip-form-group"><label>${x.id === "email" ? "Description:" : x.label}</label><input type="${x.type}" id="m-${x.id}" class="mip-form-input" value="${x.val}" ${x.dis ? 'disabled style="background:#e9e9e9;color:#666"' : ''} placeholder="${x.ph || ''}" autocomplete="off"></div>`).join('');
             this.win(false, isEdit ? 'Edit User Data' : 'Add New User', html, async () => {
                 const vals = {};
                 fields.forEach(x => vals[x.id] = document.getElementById(`m-${x.id}`).value.trim());
