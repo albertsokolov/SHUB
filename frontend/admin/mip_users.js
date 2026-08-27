@@ -2,6 +2,7 @@
  * Оптимизированный модуль управления MIP-панелью пользователей (SHUB Core) — ЧАСТЬ 1
  */
 const mip_users = {
+    // Внедряем data-sort атрибуты и контейнеры для стрелочек в шапку таблицы
     render: () => `
     <div class="mip-panel-wrapper">
     <div class="mip-filter-bar">
@@ -12,10 +13,10 @@ const mip_users = {
     <div class="mip-table-container">
     <table class="mip-grid">
     <thead>
-    <tr>
-    <th style="width:30%">Username <span>▲</span></th>
-    <th style="width:35%">Full Name</th>
-    <th style="width:35%">Description</th>
+    <tr id="mip-th-sort-row">
+    <th style="width:30%; cursor:pointer; user-select:none;" data-sort="user">Username <span class="sort-arrow"></span></th>
+    <th style="width:35%; cursor:pointer; user-select:none;" data-sort="full">Full Name <span class="sort-arrow"></span></th>
+    <th style="width:35%; cursor:pointer; user-select:none;" data-sort="desc">Description <span class="sort-arrow"></span></th>
     </tr>
     </thead>
     <tbody id="mip-users-tbody"></tbody>
@@ -43,15 +44,62 @@ const mip_users = {
             const users = await (await fetch("/api/mip/users")).json();
             document.getElementById("mip-user-count").innerText = users.length;
 
-            tbody.innerHTML = users.map(u => `
-            <tr class="mip-row ${!u.enabled ? 'mip-row-disabled' : ''}" data-user="${this.esc(u.username)}" data-full="${this.esc(u.full_name)}" data-desc="${this.esc(u.description)}" data-enabled="${u.enabled}">
-            <td class="mip-row-username">
-            <span class="icon icon-user" style="width:16px;height:16px;background-size:900% 500%!important;margin:0;flex-shrink:0;opacity:${u.enabled ? 1 : 0.4}"></span>
-            <span>${this.esc(u.username)}</span>
-            </td>
-            <td>${this.esc(u.full_name)}</td>
-            <td>${this.esc(u.description)}</td>
-            </tr>`).join('');
+            // Храним состояние текущей сортировки (поле и направление)
+            this.currentSort = { field: null, asc: true };
+
+            const renderRows = (dataList) => {
+                tbody.innerHTML = dataList.map(u => `
+                <tr class="mip-row ${!u.enabled ? 'mip-row-disabled' : ''}" data-user="${this.esc(u.username)}" data-full="${this.esc(u.full_name)}" data-desc="${this.esc(u.description)}" data-enabled="${u.enabled}">
+                <td class="mip-row-username">
+                <span class="icon icon-user" style="width:16px;height:16px;background-size:900% 500%!important;margin:0;flex-shrink:0;opacity:${u.enabled ? 1 : 0.4}"></span>
+                <span>${this.esc(u.username)}</span>
+                </td>
+                <td>${this.esc(u.full_name)}</td>
+                <td>${this.esc(u.description)}</td>
+                </tr>`).join('');
+            };
+
+            // Первичный рендер пришедших с бэкенда записей
+            renderRows(users);
+
+            // ЛОГИКА КЛИЕНТСКОЙ СОРТИРОВКИ ПО КЛИКУ НА ЗАГОЛОВКИ
+            document.getElementById("mip-th-sort-row").onclick = (e) => {
+                const th = e.target.closest("th[data-sort]");
+                if (!th) return;
+
+                const sortField = th.dataset.sort;
+
+                // Если кликнули на то же поле — меняем направление, если на новое — ставим по возрастанию (asc)
+                if (this.currentSort.field === sortField) {
+                    this.currentSort.asc = !this.currentSort.asc;
+                } else {
+                    this.currentSort.field = sortField;
+                    this.currentSort.asc = true;
+                }
+
+                // Сбрасываем стрелочки у всех колонок шапки
+                document.querySelectorAll("#mip-th-sort-row .sort-arrow").forEach(span => span.innerText = "");
+
+                // Ставим правильную стрелочку активному полю
+                th.querySelector(".sort-arrow").innerText = this.currentSort.asc ? " ▲" : " ▼";
+
+                // Выполняем сортировку массива объектов
+                users.sort((a, b) => {
+                    let valA = "", valB = "";
+                    if (sortField === "user") { valA = a.username; valB = b.username; }
+                    else if (sortField === "full") { valA = a.full_name; valB = b.full_name; }
+                    else if (sortField === "desc") { valA = a.description || ""; valB = b.description || ""; }
+
+                    // Сравниваем строки без учета регистра
+                    return this.currentSort.asc
+                    ? valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
+                    : valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
+                });
+
+                // Перерисовываем строки таблицы и заново применяем текстовые фильтры
+                renderRows(users);
+                applyFilters();
+            };
 
             // ЛОГИКА ЖИВОЙ ФИЛЬТРАЦИИ И СКРЫТИЯ ПОЛЬЗОВАТЕЛЕЙ
             const filterInput = document.getElementById("mip-user-filter");
