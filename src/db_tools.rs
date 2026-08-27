@@ -27,94 +27,6 @@ pub struct AppConfig {
     pub https_status: String,
 }
 
-pub fn init_tables(conn: &Connection) -> Result<()> {
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS cfg_tab (
-            id INTEGER PRIMARY KEY,
-            http_port INTEGER NOT NULL,
-            https_port INTEGER NOT NULL,
-            https_status TEXT NOT NULL
-    )",
-    [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS group_tab (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            description TEXT
-    )",
-    [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS user_tab (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            position TEXT,
-            email TEXT UNIQUE,
-            avatar BLOB,
-            login TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            enabled INTEGER NOT NULL DEFAULT 1 -- Добавили новое поле
-    )",
-    [],
-    )?;
-
-    Ok(())
-}
-
-pub fn seed_default_data(conn: &Connection) -> Result<()> {
-    // --- 1. Конфигурация ---
-    let cfg_count: i64 = conn.query_row("SELECT COUNT(*) FROM cfg_tab", [], |r| r.get(0))?;
-    if cfg_count == 0 {
-        conn.execute(
-            "INSERT INTO cfg_tab (id, http_port, https_port, https_status) VALUES (1, 3000, 3001, 'off')",
-                     [],
-        )?;
-    }
-
-    // --- 2. Группы пользователей ---
-    let group_count: i64 = conn.query_row("SELECT COUNT(*) FROM group_tab", [], |r| r.get(0))?;
-    if group_count == 0 {
-        let default_groups = [
-            ("Администраторы", "Полный доступ к управлению системой"),
-            ("Администраторы весь сервер только чтение", "Просмотр всех настроек сервера без права изменения"),
-            ("Пользователи", "Обычные учетные записи сотрудников"),
-            ("Супер пользователи", "Расширенные права управления без доступа к системным логам"),
-            ("Супер пользователи только чтение", "Доступ к расширенным отчетам в режиме чтения"),
-        ];
-        for (name, desc) in default_groups.iter() {
-            conn.execute("INSERT INTO group_tab (name, description) VALUES (?, ?)", [name, desc])?;
-        }
-    }
-
-    // --- 3. Пользователи ---
-
-    // Администратор (Иван Иванов)
-    let admin_exists: i64 = conn.query_row("SELECT COUNT(*) FROM user_tab WHERE login = 'admin'", [], |r| r.get(0))?;
-    if admin_exists == 0 {
-        conn.execute(
-            "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password)
-        VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     ("Иван", "Иванов", "Системный администратор", "admin@kapavto.by", None::<Vec<u8>>, "admin", "12344"),
-        )?;
-    }
-
-    // Менеджер (Петр Петров)
-    let user_exists: i64 = conn.query_row("SELECT COUNT(*) FROM user_tab WHERE login = 'user'", [], |r| r.get(0))?;
-    if user_exists == 0 {
-        conn.execute(
-            "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password)
-        VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     ("Петр", "Петров", "Менеджер", "petrov@kapavto.by", None::<Vec<u8>>, "user", "12344"),
-        )?;
-    }
-
-    Ok(())
-}
-
 pub fn get_http_port(conn: &Connection) -> u16 {
     conn.query_row("SELECT http_port FROM cfg_tab WHERE id = 1", [], |r| r.get(0)).unwrap_or(3000)
 }
@@ -172,6 +84,7 @@ pub fn fetch_all_users(conn: &Connection) -> Result<Vec<User>> {
     }
     Ok(users)
 }
+
 pub fn add_user(
     conn: &Connection,
     login: &str,
@@ -182,7 +95,7 @@ pub fn add_user(
 ) -> Result<i64> {
     conn.execute(
         "INSERT INTO user_tab (first_name, last_name, position, email, avatar, login, password, enabled)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1)", // Передаем 1 по умолчанию
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
                  (
                      first_name,
                   last_name,
@@ -196,21 +109,13 @@ pub fn add_user(
     Ok(conn.last_insert_rowid())
 }
 
-// Новая функция для изменения статуса пользователя в db_tools.rs
-pub fn set_user_status(conn: &Connection, login: &str, enabled: bool) -> Result<usize> {
-    if login == "admin" {
-        return Ok(0); // Запрещаем отключать системного администратора
-    }
-    let status_val = if enabled { 1 } else { 0 };
-    conn.execute("UPDATE user_tab SET enabled = ? WHERE login = ?", (status_val, login))
-}
 pub fn delete_user(conn: &Connection, login: &str) -> Result<usize> {
-    // Запрещаем удаление системного администратора
     if login == "admin" {
         return Ok(0);
     }
     conn.execute("DELETE FROM user_tab WHERE login = ?", [login])
 }
+
 pub fn update_user(
     conn: &Connection,
     login: &str,
@@ -224,16 +129,22 @@ pub fn update_user(
     }
 
     if password.is_empty() {
-        // Если пароль пустой, обновляем только личные данные
         conn.execute(
             "UPDATE user_tab SET first_name = ?, last_name = ?, email = ? WHERE login = ?",
             (first_name, last_name, email, login),
         )
     } else {
-        // Если пароль введен, обновляем и его тоже
         conn.execute(
             "UPDATE user_tab SET first_name = ?, last_name = ?, email = ?, password = ? WHERE login = ?",
             (first_name, last_name, email, password, login),
         )
     }
+}
+
+pub fn set_user_status(conn: &Connection, login: &str, enabled: bool) -> Result<usize> {
+    if login == "admin" {
+        return Ok(0);
+    }
+    let status_val = if enabled { 1 } else { 0 };
+    conn.execute("UPDATE user_tab SET enabled = ? WHERE login = ?", (status_val, login))
 }

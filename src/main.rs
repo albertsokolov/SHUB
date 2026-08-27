@@ -14,6 +14,7 @@ use rusqlite::Connection;
 use axum::response::Html;
 
 mod db_tools;
+mod db_init;
 mod logger;
 mod mip_users;
 
@@ -41,8 +42,8 @@ async fn main() {
     let conn = Connection::open(&*DB_PATH).expect("Нет доступа к файлу БД");
     conn.pragma_update(None, "key", "12344").expect("Ошибка инициализации SQLCipher");
 
-    db_tools::init_tables(&conn).expect("Ошибка структуры таблиц");
-    db_tools::seed_default_data(&conn).expect("Ошибка дефолтных данных");
+    db_init::init_tables(&conn).expect("Ошибка структуры таблиц");
+    db_init::seed_default_data(&conn).expect("Ошибка дефолтных данных");
 
     let server_port = db_tools::get_http_port(&conn);
     let db_state: DbState = Arc::new(Mutex::new(conn));
