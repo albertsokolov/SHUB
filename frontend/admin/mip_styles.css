@@ -485,3 +485,24 @@
 .mip-row-disabled td {
     color: #888888 !important;
 }
+/* Переключение вкладок внутри модальных окон управления группами */
+.mip-modal-window .x-tab-strip li {
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    color: #15428b;
+    cursor: pointer;
+    background: none !important;
+    transition: background-color 0.1s ease;
+}
+
+.mip-modal-window .x-tab-strip li:hover:not(.active) {
+    background-color: #edf2fa !important;
+    border-color: #b5b8c8 !important;
+}
+
+.mip-modal-window .x-tab-strip li.active {
+    background-color: #fff !important;
+    font-weight: bold;
+    border-bottom: 1px solid #fff !important;
+    z-index: 5;
+}
