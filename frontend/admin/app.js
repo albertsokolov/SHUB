@@ -246,8 +246,20 @@ function handleHashRouter() {
         if (titleIcon) titleIcon.className = "icon icon-user";
 
         // Рендерим и инициализируем MIP-панель пользователей
-        contentArea.innerHTML = mip_users.render();
+        contentArea.innerHTML = mip_users_components.render();
         mip_users.init();
+
+    } else if (hash === "#group-list") {
+        // ДОБАВЛЕНО: Обработка роута для Групп и Ролей
+        const groupLi = document.querySelector('[data-action="group-list"]');
+        if (groupLi) groupLi.classList.add("active");
+
+        if (titleText) titleText.innerText = "Группы и роли";
+        if (titleIcon) titleIcon.className = "icon icon-groups";
+
+        // Рендерим и инициализируем MIP-панель групп
+        contentArea.innerHTML = mip_groups_components.render();
+        mip_groups.init();
 
     } else if (hash === "#dashboard") {
         const dashLi = document.querySelector('[data-action="dashboard"]');
@@ -283,6 +295,7 @@ function handleHashRouter() {
         `;
     }
 }
+
 
 /**
  * ФАНТОМНЫЙ РЕСАЙЗЕР ДЛЯ MENU-PANEL
