@@ -113,7 +113,9 @@ const mip_groups = {
             });
         }
         else if (act === "edit") {
-            // ФОРМИРУЕМ ОКНО РЕДАКТИРОВАНИЯ С ФИКСИРОВАННЫМ РАЗМЕРОМ ДЛЯ ВСЕХ ВКЛАДОК
+            const groupId = row.dataset.id;
+
+            // ФОРМИРУЕМ ОКНО РЕДАКТИРОВАНИЯ С ФИКСИРОВАННЫМ РАЗМЕРОМ 320px ДЛЯ ВСЕХ ВКЛАДОК
             const html = `
             <!-- Вкладки ExtJS стиля -->
             <ul class="x-tab-strip" style="margin-top:0; margin-bottom:15px; flex-direction:row; height:24px; width:100%; border-bottom:1px solid #99bbe8">
@@ -122,23 +124,50 @@ const mip_groups = {
             <li data-win-tab="rights" style="background:none; width:70px; height:23px; text-align:center; line-height:23px; border:1px solid transparent; border-bottom:none; border-radius:3px 3px 0 0">Rights</li>
             </ul>
 
-            <!-- Контент вкладки 1: General (Фиксированная высота 120px) -->
-            <div id="w-tab-general" class="win-tab-content" style="height:120px; display:flex; flex-direction:column; gap:10px; padding-top:5px">
+            <!-- Контент вкладки 1: General (Высота 320px) -->
+            <div id="w-tab-general" class="win-tab-content" style="height:320px; display:flex; flex-direction:column; gap:10px; padding-top:5px">
             <div class="mip-form-group"><label>Name:</label><input type="text" id="mg-name" class="mip-form-input" value="${row.dataset.name}" disabled style="background:#e9e9e9;color:#666"></div>
             <div class="mip-form-group"><label>Description:</label><input type="text" id="mg-desc" class="mip-form-input" value="${row.dataset.desc}"></div>
             </div>
 
-            <!-- Контент вкладки 2: Members (Точно такая же фиксированная высота 120px) -->
-            <div id="w-tab-members" class="win-tab-content" style="display:none; height:120px; box-sizing:border-box; padding-top:5px">
-            <div style="border:1px solid #a3bae9; background:#fff; height:100%; padding:8px; overflow-y:auto; color:#666">
-            Список участников группы подгружается...
+            <!-- Контент вкладки 2: Members (Высота 320px в соответствии с макетом) -->
+            <div id="w-tab-members" class="win-tab-content" style="display:none; height:320px; box-sizing:border-box; padding-top:5px">
+            <div style="display:flex; gap:10px; height:100%; width:100%">
+            <!-- Сетка со списком пользователей -->
+            <div class="mip-table-container" style="flex:1; margin:0; border:1px solid #a3bae9; overflow-y:auto; background:#fff;">
+            <table class="mip-grid">
+            <thead>
+            <tr style="background: linear-gradient(to bottom, #f9fbfd, #e2eefb); height:22px; border-bottom:1px solid #a3bae9">
+            <th style="width:30%; color:#15428b; font-weight:normal; padding:2px 6px">Name ▾</th>
+            <th style="width:35%; color:#15428b; font-weight:normal; padding:2px 6px">Full Name</th>
+            <th style="width:35%; color:#15428b; font-weight:normal; padding:2px 6px">Description</th>
+            </tr>
+            </thead>
+            <tbody id="w-members-tbody">
+            <!-- Системный группировочный заголовок папки USERS -->
+            <tr style="background:#f0f4f8; font-weight:bold; height:20px; user-select:none">
+            <td colspan="3" style="padding:2px 6px; display:flex; align-items:center; gap:6px; border:none">
+            <span class="icon icon-net-tree" style="width:16px; height:16px; background-size:900% 500%!important; margin:0"></span>
+            <span style="color:#15428b; font-family:Tahoma; font-size:11px">USERS</span>
+            </td>
+            </tr>
+            <!-- Сюда динамически вставятся строки участников -->
+            </tbody>
+            </table>
+            </div>
+            <!-- Правая боковая панель кнопок управления участниками -->
+            <div style="width:100px; flex-shrink:0; display:flex; flex-direction:column; gap:6px">
+            <button class="mip-btn" style="width:100%" onclick="alert('Выбор пользователей из базы...')">Add Users...</button>
+            <button class="mip-btn" style="width:100%" disabled style="background:#e9e9e9; color:#999">Add Groups...</button>
+            <button class="mip-btn" style="width:100%; margin-top:auto" onclick="alert('Удаление участника...')">Remove</button>
+            </div>
             </div>
             </div>
 
-            <!-- Контент вкладки 3: Rights (Точно такая же фиксированная высота 120px) -->
-            <div id="w-tab-rights" class="win-tab-content" style="display:none; height:120px; box-sizing:border-box; padding-top:5px">
+            <!-- Контент вкладки 3: Rights (Высота 320px) -->
+            <div id="w-tab-rights" class="win-tab-content" style="display:none; height:320px; box-sizing:border-box; padding-top:5px">
             <div style="border:1px solid #a3bae9; background:#fff; height:100%; padding:8px; overflow-y:auto; color:#666">
-            Матрица прав доступа к модулям подгружается...
+            Матрица прав доступа к модулям домена подгружается...
             </div>
             </div>
             `;
@@ -147,9 +176,50 @@ const mip_groups = {
                 const desc = document.getElementById("mg-desc").value.trim();
                 alert(`Сохранение изменений группы "${row.dataset.name}". Описание: "${desc}"`);
                 return true;
-            }, false, "500px"); // Ширина 500px жестко зафиксирована в win()
+            }, false, "640px"); // Увеличили общую ширину окна до 640px под макет
+
+            // Запускаем асинхронную подгрузку участников для этой группы
+            this.loadMembers(groupId);
+        }
+        else if (act === "remove") {
+            const html = `<div class="mip-confirm-icon-question">?</div><div class="mip-confirm-text">Вы уверены, что хотите удалить группу "${row.dataset.name}"?</div>`;
+            this.win("Подтверждение", html, async () => { alert(`Удалить группу ID ${row.dataset.id}`); return true; }, true);
         }
     },
+
+    // Вспомогательный метод для асинхронной загрузки и рендера участников
+    async loadMembers(groupId) {
+        const mBody = document.getElementById("w-members-tbody");
+        if (!mBody) return;
+        try {
+            const members = await (await fetch(`/api/mip-g/groups/members?id=${groupId}`)).json();
+
+            // Рендерим строки участников сразу под заголовком USERS
+            const rowsHtml = members.map(m => `
+            <tr class="mip-row" style="height:20px; border-bottom:1px solid #ededed; background:#fff">
+            <td style="display:flex; align-items:center; gap:6px; border:none; padding:3px 6px">
+            <span class="icon icon-user" style="width:16px; height:16px; background-size:900% 500%!important; margin:0; flex-shrink:0"></span>
+            <span>${this.esc(m.username)}</span>
+            </td>
+            <td style="padding:3px 6px">${this.esc(m.fullname)}</td>
+            <td style="padding:3px 6px">${this.esc(m.description)}</td>
+            </tr>`).join('');
+
+            mBody.insertAdjacentHTML('beforeend', rowsHtml);
+
+            // Добавляем выделение по клику на строку участника внутри модального окна
+            mBody.onclick = (e) => {
+                const row = e.target.closest(".mip-row");
+                if (row) {
+                    mBody.querySelectorAll(".mip-row").forEach(r => r.style.background = "#fff");
+                    row.style.background = "#cbdcf2";
+                }
+            };
+        } catch (err) {
+            console.error("Ошибка загрузки участников группы:", err);
+        }
+    },
+
 
     win(title, bodyHtml, onOk, isConfirm = false, customWidth = "330px") {
         const id = "mip-group-win-overlay", cls = isConfirm ? "mip-confirm-window" : "mip-modal-window";
