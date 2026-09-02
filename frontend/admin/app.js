@@ -63,11 +63,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 /**
- * ГЕНЕРАЦИЯ ИНТЕРФЕЙСА
+ * ГЕНЕРАЦИЯ ИНТЕРФЕЙСА С ПОЛЬЗОВАТЕЛЬСКИМ МЕНЮ В ШАПКЕ
  */
 function renderInterface() {
     const root = document.getElementById("app-root");
     if (!root) return;
+
+    // Считываем имя админа (для десктопных систем обычно хардкодится или берется из куки/стейта)
+    const currentAdminName = "admin";
 
     root.innerHTML = `
     <div class="app-layout">
@@ -86,14 +89,13 @@ function renderInterface() {
     <li class="btn-4" title="Logs" data-target="logs"></li>
     </ul>
 
-    <!-- Логотип в нижней части панели -->
     <div class="bottom-logo-wrapper">
     <img src="/admin-files/img/shub-logo-transparent.png" alt="SHUB" class="bottom-logo-img">
     </div>
     </div>
     </div>
 
-    <!-- Белая панель меню: собирает данные из четырех внешних файлов -->
+    <!-- Белая панель меню -->
     <div class="menu-panel">
     ${mp_accounts.render()}
     ${mp_status.render()}
@@ -101,25 +103,78 @@ function renderInterface() {
     ${mp_logs.render()}
     </div>
 
-    <!-- Интерактивный разделитель с фантомом -->
+    <!-- Интерактивный разделитель -->
     <div class="spacer" id="dragMe">
     <div class="phantom-line" id="phantom"></div>
     </div>
 
     <!-- Основная правая часть страницы -->
     <div class="main-container">
-    <div class="upper-panel">
-    <h2 id="panel-title" style="margin: 0; font-family: sans-serif; color: #333; padding-left: 20px; line-height: 40px; font-weight: normal; display: flex; align-items: center;">
+    <div class="upper-panel" style="display: flex; justify-content: space-between; align-items: center; padding-right: 20px;">
+
+    <h2 id="panel-title" style="margin: 0; font-family: sans-serif; color: #333; padding-left: 20px; line-height: 43px; font-weight: normal; display: flex; align-items: center;">
     <span id="title-icon" class="icon icon-dashboard"></span>
     <span id="title-text">Dashboard</span>
     </h2>
+
+    <!-- ДОБАВЛЕНО: Правый блок профиля пользователя -->
+    <div class="upper-user-wrapper" style="position: relative;">
+    <div class="upper-user-selector" id="upper-user-menu-btn">
+    <span class="icon icon-operator" style="width:16px; height:16px; background-size:900% 500%!important; margin:0; flex-shrink:0;"></span>
+    <span class="upper-user-name">${currentAdminName}</span>
+    <span class="upper-user-arrow">▾</span>
+    </div>
+
+    <!-- Выпадающий контекстный список действий -->
+    <div class="upper-user-dropdown" id="upper-user-dropdown-menu">
+    <div class="upper-dropdown-item" onclick="alert('Профиль администратора')">My Profile</div>
+    <div class="upper-dropdown-item" onclick="alert('Смена пароля')">Change Password</div>
+    <div class="upper-dropdown-separator"></div>
+    <div class="upper-dropdown-item logout-item" id="btn-admin-logout">Logout</div>
+    </div>
+    </div>
+
     </div>
     <!-- Рабочая область для динамических MIP-панелей -->
-    <div class="content-area" id="main-content" style="font-family: sans-serif; height: calc(100% - 40px); background: #fff;"></div>
+    <div class="content-area" id="main-content" style="font-family: sans-serif; height: calc(100% - 43px); background: #fff;"></div>
     </div>
     </div>
     `;
+
+    // Инициализируем интерактив выпадающего списка
+    initUserDropdownLogic();
 }
+
+/**
+ * Логика переключения видимости и кликов по меню пользователя в шапке
+ */
+function initUserDropdownLogic() {
+    const btn = document.getElementById("upper-user-menu-btn");
+    const dropdown = document.getElementById("upper-user-dropdown-menu");
+    const logoutBtn = document.getElementById("btn-admin-logout");
+
+    if (!btn || !dropdown) return;
+
+    // Переключение по клику
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle("show");
+    };
+
+    // Скрытие при клике в любое другое место экрана
+    document.addEventListener("click", () => dropdown.classList.remove("show"));
+
+    // Действие при логауте: затираем куки и редиректим
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            // Удаляем куку admin_token через установку истекшего срока
+            document.cookie = "admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+            // Редирект на корень авторизации системы
+            window.location.href = "/admin";
+        };
+    }
+}
+
 
 /**
  * УПРАВЛЕНИЕ ТАБАМИ — Переключение подпанелей меню с запоминанием состояния

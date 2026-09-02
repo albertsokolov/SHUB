@@ -2,11 +2,13 @@ use axum::{
     extract::State,
     response::IntoResponse,
     routing::{get, post},
+    http::StatusCode,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use rusqlite::Connection;
+use tower_cookies::Cookies;
 use crate::db_tools;
 use crate::logger;
 
@@ -34,10 +36,10 @@ pub struct MipUser {
 
 #[derive(Deserialize)]
 pub struct CreateUserRequest {
-    pub login: String,      // Прилетает с фронтенда (соответствует Username/Username)
-    pub firstname: String,  // Прилетает с фронтенда как First Name
-    pub lastname: String,   // Прилетает с фронтенда как Last Name
-    pub email: Option<String>, // Прилетает с фронтенда из поля Email / Desc
+    pub login: String,
+    pub firstname: String,
+    pub lastname: String,
+    pub email: Option<String>,
     pub password: String,
 }
 
@@ -59,10 +61,15 @@ pub struct SetStatusRequest {
 }
 
 // Получение списка пользователей для ExtJS-таблицы
-pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoResponse {
-    let conn = db.lock().unwrap();
+pub async fn get_mip_users_handler(
+    State(db): State<DbState>,
+                                   cookies: Cookies,
+) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
 
-    // Выбираем данные в строгом соответствии с новой схемой
+    let conn = db.lock().unwrap();
     let mut stmt = conn
     .prepare("SELECT username, fullname, description, enabled FROM user_tab")
     .unwrap();
@@ -70,8 +77,6 @@ pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoRespon
     let user_iter = stmt
     .query_map([], |row| {
         let is_enabled: i32 = row.get(3)?;
-        // В рамках текущего вывода групп временно ставим прочерк,
-        // пока не подключили вывод связей из member_tab и group_tab
         Ok(MipUser {
             username: row.get(0)?,
            full_name: row.get(1)?,
@@ -89,20 +94,21 @@ pub async fn get_mip_users_handler(State(db): State<DbState>) -> impl IntoRespon
         }
     }
 
-    Json(users)
+    Json(users).into_response()
 }
 
 // Обработчик добавления нового пользователя
 pub async fn add_user_handler(
     State(db): State<DbState>,
+                              cookies: Cookies,
                               Json(payload): Json<CreateUserRequest>,
 ) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
     let conn = db.lock().unwrap();
-
-    // Формируем fullname из полей имени и фамилии
     let full_name = format!("{} {}", payload.firstname.trim(), payload.lastname.trim());
-
-    // Используем email/desc из формы как описание и как email (для совместимости схемы)
     let desc_opt = payload.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()).map(|s| s.to_string());
     let email_opt = desc_opt.clone();
 
@@ -119,14 +125,14 @@ pub async fn add_user_handler(
             Json(UserActionResponse {
                 success: true,
                 message: "User added".to_string(),
-            })
+            }).into_response()
         }
         Err(e) => {
             logger::error(APP_NAME, &format!("Ошибка добавления пользователя {}: {}", payload.login, e));
             Json(UserActionResponse {
                 success: false,
                 message: e.to_string(),
-            })
+            }).into_response()
         }
     }
 }
@@ -134,8 +140,13 @@ pub async fn add_user_handler(
 // Обработчик удаления пользователя
 pub async fn delete_user_handler(
     State(db): State<DbState>,
+                                 cookies: Cookies,
                                  Json(payload): Json<DeleteUserRequest>,
 ) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
     let conn = db.lock().unwrap();
     let username = &payload.login;
 
@@ -143,7 +154,7 @@ pub async fn delete_user_handler(
         return Json(UserActionResponse {
             success: false,
             message: "Cannot delete system administrator".to_string(),
-        });
+        }).into_response();
     }
 
     match db_tools::delete_user(&conn, username) {
@@ -152,18 +163,18 @@ pub async fn delete_user_handler(
             Json(UserActionResponse {
                 success: true,
                 message: "User removed".to_string(),
-            })
+            }).into_response()
         }
         Ok(_) => Json(UserActionResponse {
             success: false,
             message: "User not found".to_string(),
-        }),
+        }).into_response(),
         Err(e) => {
             logger::error(APP_NAME, &format!("Ошибка удаления пользователя {}: {}", username, e));
             Json(UserActionResponse {
                 success: false,
                 message: e.to_string(),
-            })
+            }).into_response()
         }
     }
 }
@@ -171,8 +182,13 @@ pub async fn delete_user_handler(
 // Обработчик изменения данных пользователя
 pub async fn edit_user_handler(
     State(db): State<DbState>,
+                               cookies: Cookies,
                                Json(payload): Json<CreateUserRequest>,
 ) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
     let conn = db.lock().unwrap();
     let username = &payload.login;
 
@@ -180,7 +196,7 @@ pub async fn edit_user_handler(
         return Json(UserActionResponse {
             success: false,
             message: "Cannot modify system administrator".to_string(),
-        });
+        }).into_response();
     }
 
     let full_name = format!("{} {}", payload.firstname.trim(), payload.lastname.trim());
@@ -200,18 +216,18 @@ pub async fn edit_user_handler(
             Json(UserActionResponse {
                 success: true,
                 message: "User updated".to_string(),
-            })
+            }).into_response()
         }
         Ok(_) => Json(UserActionResponse {
             success: false,
             message: "User not found".to_string(),
-        }),
+        }).into_response(),
         Err(e) => {
             logger::error(APP_NAME, &format!("Ошибка обновления пользователя {}: {}", username, e));
             Json(UserActionResponse {
                 success: false,
                 message: e.to_string(),
-            })
+            }).into_response()
         }
     }
 }
@@ -219,15 +235,20 @@ pub async fn edit_user_handler(
 // Обработчик изменения статуса (активен / заблокирован)
 pub async fn set_status_handler(
     State(db): State<DbState>,
+                                cookies: Cookies,
                                 Json(payload): Json<SetStatusRequest>,
 ) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
     let conn = db.lock().unwrap();
 
     if payload.login == "admin" {
         return Json(UserActionResponse {
             success: false,
             message: "Cannot disable admin".to_string(),
-        });
+        }).into_response();
     }
 
     match db_tools::set_user_status(&conn, &payload.login, payload.enabled) {
@@ -236,15 +257,15 @@ pub async fn set_status_handler(
             Json(UserActionResponse {
                 success: true,
                 message: "Status updated".to_string(),
-            })
+            }).into_response()
         }
         Ok(_) => Json(UserActionResponse {
             success: false,
             message: "User not found".to_string(),
-        }),
+        }).into_response(),
         Err(e) => Json(UserActionResponse {
             success: false,
             message: e.to_string(),
-        }),
+        }).into_response(),
     }
 }

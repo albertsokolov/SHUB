@@ -145,3 +145,39 @@ pub fn set_user_status(conn: &Connection, username: &str, enabled: bool) -> Resu
     let status_val = if enabled { 1 } else { 0 };
     conn.execute("UPDATE user_tab SET enabled = ? WHERE username = ?", (status_val, username))
 }
+/// Проверяет, состоит ли пользователь в группе с указанным именем
+pub fn is_user_in_group(conn: &Connection, username: &str, group_name: &str) -> bool {
+    let query = "
+    SELECT COUNT(*)
+    FROM user_tab u
+    JOIN member_tab m ON u.id = m.user_id
+    JOIN group_tab g ON m.group_id = g.id
+    WHERE u.username = ? AND g.name = ?
+    ";
+
+    conn.query_row(query, [username, group_name], |row| row.get::<_, i64>(0))
+    .unwrap_or(0) > 0
+}
+/// Проверяет, привязан ли уже пользователь к группе
+pub fn is_member_exists(conn: &Connection, user_id: i64, group_id: i64) -> bool {
+    let query = "SELECT COUNT(*) FROM member_tab WHERE user_id = ? AND group_id = ?";
+    conn.query_row(query, [user_id, group_id], |row| row.get::<_, i64>(0))
+    .unwrap_or(0) > 0
+}
+
+/// Добавляет пользователя в группу по их ID
+pub fn add_group_member(conn: &Connection, user_id: i64, group_id: i64) -> Result<usize> {
+    conn.execute(
+        "INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)",
+                 [user_id, group_id],
+    )
+}
+
+/// Удаляет пользователя из группы по юзернейму и ID группы
+pub fn remove_group_member(conn: &Connection, username: &str, group_id: i64) -> Result<usize> {
+    conn.execute(
+        "DELETE FROM member_tab
+        WHERE group_id = ? AND user_id = (SELECT id FROM user_tab WHERE username = ?)",
+                 (group_id, username),
+    )
+}

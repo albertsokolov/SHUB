@@ -87,10 +87,12 @@ async fn root_handler(cookies: Cookies) -> Response {
 }
 
 async fn admin_handler(cookies: Cookies) -> Response {
+    // ЖЕСТКАЯ ЗАЩИТА: В админку пускаем ТОЛЬКО тех, у кого есть admin_token
     if cookies.get("admin_token").is_some() {
         let body = std::fs::read_to_string("frontend/admin/index.html").unwrap_or_default();
         Html(body).into_response()
     } else {
+        // Обычные пользователи или неавторизованные гости улетают на экран входа
         let body = std::fs::read_to_string("frontend/admin/login/index.html").unwrap_or_default();
         Html(body).into_response()
     }
@@ -104,7 +106,6 @@ async fn login_handler(
     logger::info(APP_NAME, &format!("Попытка входа для пользователя: {}", payload.login));
     let conn = db.lock().unwrap();
 
-    // SQL-запрос обновлен: проверяем username и то, что учетная запись не отключена (enabled = 1)
     let mut stmt = conn.prepare("SELECT password, username, enabled FROM user_tab WHERE username = ?").unwrap();
     let user_res = stmt.query_row([&payload.login], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i32>(2)?))
@@ -116,16 +117,22 @@ async fn login_handler(
                 return Json(LoginResponse { success: false, message: "Учетная запись заблокирована".to_string() });
             }
             if db_password == payload.password {
-                if username == "admin" {
+                // ПРОВЕРКА РОЛЕЙ НА ОСНОВЕ ДАННЫХ ИЗ БАЗЫ ДАННЫХ member_tab
+                if db_tools::is_user_in_group(&conn, &username, "Администраторы") {
+                    // Администратор получает админский токен
                     let mut cookie = Cookie::new("admin_token", "secret_admin_val");
                     cookie.set_path("/");
                     cookies.add(cookie);
-                } else {
+                    Json(LoginResponse { success: true, message: "ОК".to_string() })
+                } else if db_tools::is_user_in_group(&conn, &username, "Пользователи") {
+                    // Обычный пользователь получает только клиентский токен
                     let mut cookie = Cookie::new("session_token", "secret_client_val");
                     cookie.set_path("/");
                     cookies.add(cookie);
+                    Json(LoginResponse { success: true, message: "ОК".to_string() })
+                } else {
+                    Json(LoginResponse { success: false, message: "Пользователь не привязан ни к одной группе".to_string() })
                 }
-                Json(LoginResponse { success: true, message: "ОК".to_string() })
             } else {
                 Json(LoginResponse { success: false, message: "Неверный пароль".to_string() })
             }

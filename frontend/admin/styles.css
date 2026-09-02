@@ -355,3 +355,85 @@ background-size: 900% 500% !important;
 .mip-btn:active {
     background: #d4e3f5;
 }
+/* ==========================================================================
+ *   ПОЛЬЗОВАТЕЛЬСКОЕ МЕНЮ В ВЕРХНЕЙ ПАНЕЛИ (UPPER-PANEL USER MENU)
+ *   ========================================================================== */
+.upper-user-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 12px;
+    color: #15428b;
+    user-select: none;
+    transition: all 0.1s ease;
+}
+
+/* Ховер плашки имени (нежный серо-синий фон с рамкой) */
+.upper-user-selector:hover {
+    background: #edf2fa;
+    border: 1px solid #a3bae9;
+    color: #000;
+}
+
+.upper-user-name {
+    font-weight: bold;
+}
+
+.upper-user-arrow {
+    font-size: 11px;
+    color: #b5b8c8;
+}
+
+/* Контейнер выпадающего меню */
+.upper-user-dropdown {
+    display: none;
+    position: absolute;
+    top: 28px;
+    right: 0;
+    z-index: 2500;
+    background: #f0f0f0;
+    border: 1px solid #979797;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    padding: 2px;
+    min-width: 140px;
+    box-sizing: border-box;
+}
+
+.upper-user-dropdown.show {
+    display: block;
+}
+
+/* Элементы меню */
+.upper-dropdown-item {
+    padding: 4px 15px 4px 20px;
+    color: #000;
+    cursor: pointer;
+    user-select: none;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+}
+
+.upper-dropdown-item:hover {
+    background-color: #aecaf2;
+}
+
+/* Разделительная линия элементов */
+.upper-dropdown-separator {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 3px 2px;
+    border-bottom: 1px solid #fff;
+}
+
+.upper-dropdown-item.logout-item {
+    color: #cc0000;
+}
+.upper-dropdown-item.logout-item:hover {
+    color: #fff;
+    background-color: #cc0000;
+}
