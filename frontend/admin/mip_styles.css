@@ -506,3 +506,111 @@
     border-bottom: 1px solid #fff !important;
     z-index: 5;
 }
+/* Ультра-компактные стили для fieldset Advanced Options */
+.adv-fs {
+    border: 1px solid #b5b8c8;
+    padding: 10px 15px 12px 15px;
+    margin: 0;
+    border-radius: 3px;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+}
+.adv-fs legend {
+    color: #15428b;
+    font-weight: bold;
+    padding: 0 3px;
+}
+.adv-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.adv-row:last-child {
+    margin-bottom: 0;
+}
+.adv-row label {
+    width: 170px;
+    color: #333;
+    flex-shrink: 0;
+}
+.adv-sel {
+    height: 20px;
+    border: 1px solid #a3bae9;
+    font-size: 11px;
+    outline: none;
+}
+.adv-info {
+    margin-top: 8px;
+    color: #666;
+    line-height: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.adv-info a {
+    color: #0093dd;
+    text-decoration: none;
+}
+
+/* ==========================================================================
+ *   КЛАССИЧЕСКИЕ АДАПТИВНЫЕ ЗАКЛАДКИ EXTJS / WIN32 (БЕЗ ФИКСИРОВАННОЙ ШИРИНЫ)
+ *   ========================================================================== */
+.mip-panel-wrapper .x-tab-strip li {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 11px;
+    color: #444444;
+    background: #f0f4f9 !important;
+    border: 1px solid #d9d9d9;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+
+    /* ИСПРАВЛЕНИЕ: Убираем fixed width и даем автоматические внутренние отступы */
+    width: auto !important;
+    padding: 0 12px !important;
+
+    height: 23px;
+    line-height: 23px;
+    text-align: center;
+    cursor: pointer;
+    margin-right: 2px;
+    margin-bottom: -1px;
+    position: relative;
+    z-index: 1;
+    white-space: nowrap; /* Запрещаем перенос слов внутри таба */
+    transition: all 0.1s ease;
+}
+
+/* Эффект наведения на неактивную закладку */
+.mip-panel-wrapper .x-tab-strip li:hover:not(.active) {
+    background: #edf2fa !important;
+    border-color: #b5b8c8;
+    color: #15428b;
+}
+
+/* Активная вкладка, безупречно перекрывающая верхнюю рамку контейнера */
+.mip-panel-wrapper .x-tab-strip li.active {
+    background: #ffffff !important;
+    border: 1px solid #99bbe8;
+    border-bottom: 1px solid #ffffff !important;
+    color: #15428b;
+    font-weight: bold;
+    height: 24px;
+    line-height: 24px;
+    z-index: 10;
+}
+
+/* ИСПРАВЛЕНИЕ СДВИГА: Резервируем место под жирный текст для всех вкладок заранее */
+.mip-panel-wrapper .x-tab-strip li::before {
+    display: block;
+    content: attr(data-text); /* Браузер считывает текст из атрибута */
+    font-weight: bold;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+}
+
+/* Корректировка отступа контейнера для предотвращения наползания текста */
+.mip-panel-wrapper .x-tab-strip {
+    padding-left: 5px !important;
+}

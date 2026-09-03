@@ -3,12 +3,15 @@ const mp_configuration = {
         return `
         <div id="menu_panel_configuration" class="menu-sub-panel hide">
         <ul class="menu-tree">
-        <li data-action="net-ports"><span class="icon icon-cloud-cfg"></span>Сетевые порты</li>
-        <li data-action="db-crypto"><span class="icon icon-doc-cfg"></span>Шифрование БД</li>
-        <li data-action="ssl-certs"><span class="icon icon-cert"></span>Сертификаты SSL</li>
+        <li data-action="domains"><span class="icon icon-doc-globe"></span>Domains</li>
+        <li data-action="modules"><span class="icon icon-cloud-cfg"></span>Modules</li>
+        <li data-action="services"><span class="icon icon-doc-gear"></span>Services</li>
+        <li data-action="ports"><span class="icon icon-nic"></span>Ports</li>
+        <li data-action="advancedOptions"><span class="icon icon-tools"></span>Advanced Options</li>
         </ul>
         </div>
         `;
     }
 };
+
 

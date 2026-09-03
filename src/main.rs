@@ -18,6 +18,7 @@ mod db_init;
 mod logger;
 mod mip_users;
 mod mip_group;
+mod mip_advoptions;
 
 static APP_NAME: &str = "SHUB";
 static DB_PATH: Lazy<String> = Lazy::new(|| format!("{}.db", APP_NAME));
@@ -56,6 +57,7 @@ async fn main() {
     .route("/users", get(get_users_handler))
     .nest("/mip", mip_users::router())
     .nest("/mip-g", mip_group::router()) // Добавляем эндпоинты групп
+    .nest("/mip-adv", mip_advoptions::router()) // Добавляем эндпоинты расширенных настроек
     .with_state(db_state);
 
     let app = Router::new()

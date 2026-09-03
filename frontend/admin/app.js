@@ -281,6 +281,9 @@ function initMenuTreeClicks() {
 /**
  * ГЛОБАЛЬНЫЙ ХЭШ-РОУТЕР (Управляет отображением MIP-панелей)
  */
+/**
+ * ГЛОБАЛЬНЫЙ ХЭШ-РОУТЕР (Управляет отображением MIP-панелей)
+ */
 function handleHashRouter() {
     const hash = window.location.hash || "#dashboard";
     const contentArea = document.getElementById("main-content");
@@ -305,7 +308,6 @@ function handleHashRouter() {
         mip_users.init();
 
     } else if (hash === "#group-list") {
-        // ДОБАВЛЕНО: Обработка роута для Групп и Ролей
         const groupLi = document.querySelector('[data-action="group-list"]');
         if (groupLi) groupLi.classList.add("active");
 
@@ -315,6 +317,17 @@ function handleHashRouter() {
         // Рендерим и инициализируем MIP-панель групп
         contentArea.innerHTML = mip_groups_components.render();
         mip_groups.init();
+
+    } else if (hash === "#advancedOptions") {
+        const advLi = document.querySelector('[data-action="advancedOptions"]');
+        if (advLi) advLi.classList.add("active");
+
+        if (titleText) titleText.innerText = "Advanced Options";
+        if (titleIcon) titleIcon.className = "icon icon-tools";
+
+        // Рендерим и инициализируем MIP-панель расширенных настроек
+        contentArea.innerHTML = mip_advoptions.render();
+        mip_advoptions.init();
 
     } else if (hash === "#dashboard") {
         const dashLi = document.querySelector('[data-action="dashboard"]');
@@ -350,7 +363,6 @@ function handleHashRouter() {
         `;
     }
 }
-
 
 /**
  * ФАНТОМНЫЙ РЕСАЙЗЕР ДЛЯ MENU-PANEL
