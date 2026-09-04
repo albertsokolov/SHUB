@@ -35,7 +35,7 @@ const mip_advoptions_misc = {
     <legend>User quota</legend>
     <div class="adv-row"><label>Warning limit:</label><input type="number" id="adv-quota-limit" class="mip-form-input" style="width:60px" value="90"><span>%</span></div>
     <div class="adv-row"><label>If the warning limit is reached:</label><select id="adv-quota-action" class="adv-sel" style="width:150px"><option>Once</option><option>Daily</option></select></div>
-    <div class="adv-row"><label>Send a message to this address:</label><input type="text" id="adv-quota-email" class="mip-form-input" style="width:250px" placeholder="admin@kapavto.by"></div>
+    <div class="adv-row"><label>Send a message to this address:</label><input type="text" id="adv-quota-email" class="mip-form-input" style="width:250px" value="tyutyu" placeholder="admin@kapavto.by"></div>
     </fieldset>
     </div>`,
 
@@ -43,24 +43,25 @@ const mip_advoptions_misc = {
         path: document.getElementById("adv-store-path")?.value || "",
                       search: document.getElementById("adv-enable-search")?.checked || false,
                       soft: document.getElementById("adv-watchdog-soft")?.value || "",
-                      soft_u: document.getElementById("adv-watchdog-soft-unit")?.value || "",
+                      soft_u: document.getElementById("adv-watchdog-soft-unit")?.value || "GB",
                       hard: document.getElementById("adv-watchdog-hard")?.value || "",
-                      hard_u: document.getElementById("adv-watchdog-hard-unit")?.value || "",
+                      hard_u: document.getElementById("adv-watchdog-hard-unit")?.value || "MB",
                       quota: document.getElementById("adv-quota-limit")?.value || "",
-                      quota_a: document.getElementById("adv-quota-action")?.value || "",
+                      quota_a: document.getElementById("adv-quota-action")?.value || "Once",
                       email: document.getElementById("adv-quota-email")?.value || ""
     }),
 
-    deserialize: (orig) => {
-        if (!orig) return;
-        if (document.getElementById("adv-store-path")) document.getElementById("adv-store-path").value = orig.path;
-        if (document.getElementById("adv-enable-search")) document.getElementById("adv-enable-search").checked = orig.search;
-        if (document.getElementById("adv-watchdog-soft")) document.getElementById("adv-watchdog-soft").value = orig.soft;
-        if (document.getElementById("adv-watchdog-soft-unit")) document.getElementById("adv-watchdog-soft-unit").value = orig.soft_u;
-        if (document.getElementById("adv-watchdog-hard")) document.getElementById("adv-watchdog-hard").value = orig.hard;
-        if (document.getElementById("adv-watchdog-hard-unit")) document.getElementById("adv-watchdog-hard-unit").value = orig.hard_u;
-        if (document.getElementById("adv-quota-limit")) document.getElementById("adv-quota-limit").value = orig.quota;
-        if (document.getElementById("adv-quota-action")) document.getElementById("adv-quota-action").value = orig.quota_a;
-        if (document.getElementById("adv-quota-email")) document.getElementById("adv-quota-email").value = orig.email;
+    deserialize: (data) => {
+        if (!data) return;
+        const setVal = (id, val, prop = 'value') => { const el = document.getElementById(id); if (el) el[prop] = val; };
+        setVal("adv-store-path", data.path);
+        setVal("adv-enable-search", data.search, "checked");
+        setVal("adv-watchdog-soft", data.soft);
+        setVal("adv-watchdog-soft-unit", data.soft_u);
+        setVal("adv-watchdog-hard", data.hard);
+        setVal("adv-watchdog-hard-unit", data.hard_u);
+        setVal("adv-quota-limit", data.quota);
+        setVal("adv-quota-action", data.quota_a);
+        setVal("adv-quota-email", data.email);
     }
 };

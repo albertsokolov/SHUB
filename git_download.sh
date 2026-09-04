@@ -3,12 +3,17 @@
 # Останавливаем выполнение скрипта при любой ошибке
 set -e
 
-APP_NAME="SHUB"
-GITHUB_USER="albertsokolov" # Укажите ваш точный юзернейм на GitHub
+# НАСТРОЙКИ: Имена на GitHub чувствительны к регистру!
+GITHUB_USER="albertsokolov"
+REPO_NAME="shub"          # Имя репозитория на GitHub
 
 echo "===================================================="
-echo " Начало загрузки проекта [$APP_NAME] из GitHub"
+echo " Начало синхронизации проекта [$REPO_NAME] из GitHub"
 echo "===================================================="
+
+# Переходим в папку, где лежит сам скрипт, чтобы пути были надежными
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # 1. Автоматический запуск SSH-агента и добавление ключа
 if [ -z "$SSH_AUTH_SOCK" ]; then
@@ -28,43 +33,38 @@ fi
 
 # 2. Проверяем доступ к GitHub по SSH
 echo " Проверка SSH-подключения..."
-SSH_CHECK=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)
-if [[ "$SSH_CHECK" != *"successfully authenticated"* ]]; then
-    echo "❌ Ошибка аутентификации SSH."
+set +e
+SSH_TEST=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1)
+set -e
+
+if [[ "$SSH_TEST" != *"successfully authenticated"* ]]; then
+    echo "❌ Ошибка аутентификации SSH. Проверьте ключ на GitHub."
+    echo "Ответ сервера: $SSH_TEST"
     exit 1
 fi
+echo "✅ SSH-подключение успешно."
 
-# 3. Синхронизация кода (умное определение папки)
-# Проверяем, находимся ли мы уже внутри Git-репозитория SHUB
-if [ -d ".git" ] && [[ "$(git config --get remote.origin.url)" == *"github.com"* ]]; then
-    echo "🔄 Вы уже находитесь в рабочей директории репозитория."
-    echo " Выполняем обновление (git pull)..."
-    # На всякий случай обновляем URL на правильный SSH-адрес
-    git remote set-url origin "git@github.com:$GITHUB_USER/$APP_NAME.git"
+# 3. Синхронизация кода
+# Так как скрипт лежит внутри репозитория, мы просто проверяем наличие .git
+if [ -d ".git" ]; then
+    echo "🔄 Выполнение обновления (git pull)..."
+    git remote set-url origin "git@github.com:$GITHUB_USER/$REPO_NAME.git"
     git pull origin main
 else
-    # Если мы снаружи, проверяем наличие папки рядом
-    TARGET_DIR="shub"
-    if [ -d "$TARGET_DIR" ]; then
-        echo "⚠️ Папка $TARGET_DIR существует рядом. Заходим и обновляем..."
-        cd "$TARGET_DIR"
-        git remote set-url origin "git@github.com:$GITHUB_USER/$APP_NAME.git"
-        git pull origin main
-    else
-        echo " Стягиваем приватный репозиторий по SSH..."
-        git clone "git@github.com:$GITHUB_USER/$APP_NAME.git" "$TARGET_DIR"
-        cd "$TARGET_DIR"
-    fi
+    echo "❌ Ошибка: Папка .git не найдена в директории скрипта ($SCRIPT_DIR)."
+    echo "Убедитесь, что скрипт запускается из корня Git-репозитория."
+    exit 1
 fi
 
 # 4. Проверка и удаление старой Windows-базы данных
 if [ -f "SHUB.db" ]; then
     echo " Удаление старого файла базы данных для пересоздания под Linux..."
     rm -f SHUB.db
+elif [ -f "shub.db" ]; then
+    echo " Удаление старого файла базы данных (shub.db)..."
+    rm -f shub.db
 fi
 
-# 5. Сборка и запуск проекта на Arch Linux
 echo "===================================================="
-echo " Проект успешно загружен. Запуск сборки Cargo..."
+echo "✅ Синхронизация успешно завершена!"
 echo "===================================================="
-cargo run

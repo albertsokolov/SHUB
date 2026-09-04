@@ -1,9 +1,17 @@
 /**
- * Модуль управления MIP-панелью Advanced Options (Диспетчер)
+ * Оптимизированный модуль управления Advanced Options (Диспетчер на флагах)
  */
 const mip_advoptions = {
-    originalData: null,
-    isDirty: false,
+    // Наша переменная отслеживания изменений (по умолчанию true - изменений нет)
+    chk_chnges_state: true,
+
+    // Переменная обратной совместимости для глобального роутера табов в app.js
+    get isDirty() {
+        return !this.chk_chnges_state;
+    },
+    set isDirty(val) {
+        this.chk_chnges_state = !val;
+    },
 
     render: () => `
     <div class="mip-panel-wrapper" style="background:#dfecfa; padding:8px; height:100%; display:flex; flex-direction:column; box-sizing:border-box">
@@ -14,17 +22,13 @@ const mip_advoptions = {
     <li data-adv-tab="proxy" data-text="HTTP Proxy">HTTP Proxy</li>
     <li data-adv-tab="updates" data-text="Updates">Updates</li>
     </ul>
-
-    <div style="flex:1; background:#fff; border:1px solid #99bbe8; border-top:none; padding:15px; overflow-y:auto; display:flex; flex-direction:column; gap:30px; box-sizing:border-box">
-    <!-- Динамически внедряем контент обособленных вкладок -->
+    <div id="adv-main-container" style="flex:1; background:#fff; border:1px solid #99bbe8; border-top:none; padding:15px; overflow-y:auto; display:flex; flex-direction:column; gap:30px; box-sizing:border-box">
     ${mip_advoptions_misc.render()}
     ${mip_advoptions_store.render()}
-
     <div id="adv-tab-content-auth" class="adv-tab-pane" style="display:none">Параметры Master Authentication подгружаются...</div>
     <div id="adv-tab-content-proxy" class="adv-tab-pane" style="display:none">Конфигурация HTTP Proxy подгружаются...</div>
     <div id="adv-tab-content-updates" class="adv-tab-pane" style="display:none">Управление Software Updates подгружаются...</div>
     </div>
-
     <div style="height:40px; display:flex; justify-content:flex-end; align-items:center; gap:6px; padding:0 8px; flex-shrink:0">
     <button class="mip-btn" id="adv-btn-apply" disabled style="font-weight:bold; width:80px">Apply</button>
     <button class="mip-btn" id="adv-btn-reset" disabled style="width:80px">Reset</button>
@@ -35,59 +39,82 @@ const mip_advoptions = {
         const wrapper = document.querySelector(".mip-panel-wrapper");
         if (!wrapper) return;
 
+        // 1. ИНТЕРАКТИВНОЕ ПЕРЕКЛЮЧЕНИЕ ТАБОВ (Без влияния на флаг изменений)
         const winTabs = wrapper.querySelectorAll("[data-adv-tab]");
         winTabs.forEach(tab => {
             tab.onclick = (e) => {
                 e.stopPropagation();
                 winTabs.forEach(t => { t.classList.remove("active"); t.style.background = "none"; t.style.borderColor = "transparent"; });
                 tab.classList.add("active"); tab.style.borderColor = "#99bbe8"; tab.style.background = "#fff";
-
                 wrapper.querySelectorAll(".adv-tab-pane").forEach(c => c.style.display = "none");
                 const target = wrapper.querySelector(`#adv-tab-content-${tab.dataset.advTab}`);
-                if (target) target.style.display = (tab.dataset.advTab === "misc" || tab.dataset.advTab === "store") ? "flex" : "block";
+                if (target) target.style.display = ["misc", "store"].includes(tab.dataset.advTab) ? "flex" : "block";
             };
         });
 
-        // Объединенная сериализация всей формы из разных файлов
-        this.serializeForm = () => JSON.stringify({
-            misc: mip_advoptions_misc.serialize(),
-                                                  store: mip_advoptions_store.serialize()
-        });
+        // 2. ФУНКЦИЯ УПРАВЛЕНИЯ КНОПКАМИ НА ОСНОВЕ ПЕРЕМЕННОЙ CHK_CHNGES_STATE
+        this.updateButtonsUI = () => {
+            const btnApply = document.getElementById("adv-btn-apply");
+            const btnReset = document.getElementById("adv-btn-reset");
 
-        this.checkChanges = () => {
-            this.isDirty = this.serializeForm() !== this.originalData;
-            document.getElementById("adv-btn-apply").disabled = !this.isDirty;
-            document.getElementById("adv-btn-reset").disabled = !this.isDirty;
+            if (btnApply && btnReset) {
+                // Если chk_chnges_state === true -> изменений нет -> disabled = true (затенены)
+                // Если chk_chnges_state === false -> изменения есть -> disabled = false (активны)
+                btnApply.disabled = this.chk_chnges_state;
+                btnReset.disabled = this.chk_chnges_state;
+            }
         };
 
-        const contentBox = wrapper.querySelector("div[style*='flex:1']");
-        contentBox.oninput = contentBox.onchange = () => this.checkChanges();
-
-        const loadSettings = async () => {
-            try {
-                await fetch("/api/mip-adv/advoptions");
-                this.originalData = this.serializeForm();
-                this.isDirty = false;
-                this.checkChanges();
-            } catch (err) { console.error(err); }
+        // 3. ОБРАБОТЧИК ЛЮБОГО ВОЗДЕЙСТВИЯ НА КОНТРОЛЫ ЛЮБОЙ ВКЛАДКИ
+        const onControlInput = () => {
+            // Зафиксировано воздействие на контролы -> переключаем флаг в false (форма грязная)
+            this.chk_chnges_state = false;
+            this.updateButtonsUI();
         };
 
-        await loadSettings();
+        // Навешиваем слушатели на центральный контейнер формы методом делегирования
+        const container = document.getElementById("adv-main-container");
+        if (container) {
+            container.addEventListener("input", onControlInput);
+            container.addEventListener("change", onControlInput);
+        }
 
+        // Изначальный жесткий сброс состояния при загрузке: изменений нет (true)
+        this.chk_chnges_state = true;
+        this.updateButtonsUI();
+
+        // Запрашиваем дефолтные настройки с бэкенда, чтобы заполнить поля
+        try {
+            await fetch("/api/mip-adv/advoptions");
+        } catch (err) { console.error(err); }
+
+        // КНОПКА RESET: Принудительно сбрасывает флаг в true и затеняет кнопки
         document.getElementById("adv-btn-reset").onclick = () => {
-            if (!this.isDirty) return;
-            const orig = JSON.parse(this.originalData);
-            mip_advoptions_misc.deserialize(orig.misc);
-            mip_advoptions_store.deserialize(orig.store);
-            this.isDirty = false;
-            this.checkChanges();
+            if (this.chk_chnges_state) return; // Если и так чистая, ничего не делаем
+
+            // Задаем жесткий дефолтный слепок для отката полей макета Kerio
+            const defaultBak = {
+                path: "/store/", search: false, soft: "1", soft_u: "GB",
+                hard: "100", hard_u: "MB", quota: "90", quota_a: "Once", email: "tyutyu",
+                cache: true, interval: "10"
+            };
+
+            // Перерисовываем поля через десериализаторы обособленных вкладок
+            mip_advoptions_misc.deserialize(defaultBak);
+            mip_advoptions_store.deserialize(defaultBak);
+
+            // Фиксируем: воздействие аннулировано, изменений нет
+            this.chk_chnges_state = true;
+            this.updateButtonsUI();
         };
 
+        // КНОПКА APPLY: Применяет изменения, фиксирует состояние и затеняет кнопки
         document.getElementById("adv-btn-apply").onclick = () => {
-            if (!this.isDirty) return;
-            this.originalData = this.serializeForm();
-            this.isDirty = false;
-            this.checkChanges();
+            if (this.chk_chnges_state) return;
+
+            // Фиксируем: изменения применены, текущее состояние становится эталоном
+            this.chk_chnges_state = true;
+            this.updateButtonsUI();
             alert("Настройки успешно сохранены!");
         };
     },
@@ -100,7 +127,7 @@ const mip_advoptions = {
         overlay.innerHTML = `
         <div class="mip-confirm-window" style="width: 380px;">
         <div class="mip-modal-header"><div class="mip-modal-title">Confirm</div><div class="mip-modal-close-btn" id="m-leave-close">X</div></div>
-        <div class="mip-confirm-body" style="padding: 15px 12px;">
+        <div class="mip-confirm-body" style="padding:15px 12px">
         <div class="mip-confirm-icon-question">?</div>
         <div class="mip-confirm-text" style="font-size:12px; font-family:Tahoma">You have modified data in this section. Do you want to save changes?</div>
         </div>

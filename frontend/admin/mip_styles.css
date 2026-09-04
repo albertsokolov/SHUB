@@ -1,4 +1,4 @@
-/* Общий контейнер для любой MIP-панели */
+/* Общий контейнер для любой MIP-панели  */
 .mip-panel-wrapper {
     display: flex;
     flex-direction: column;

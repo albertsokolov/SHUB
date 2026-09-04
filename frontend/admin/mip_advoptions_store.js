@@ -16,9 +16,11 @@ const mip_advoptions_store = {
                       interval: document.getElementById("adv-store-interval")?.value || ""
     }),
 
-    deserialize: (orig) => {
-        if (!orig) return;
-        if (document.getElementById("adv-store-free-cache")) document.getElementById("adv-store-free-cache").checked = orig.cache;
-        if (document.getElementById("adv-store-interval")) document.getElementById("adv-store-interval").value = orig.interval;
+    deserialize: (data) => {
+        if (!data) return;
+        const elCache = document.getElementById("adv-store-free-cache");
+        const elInt = document.getElementById("adv-store-interval");
+        if (elCache) elCache.checked = data.cache;
+        if (elInt) elInt.value = data.interval;
     }
 };
