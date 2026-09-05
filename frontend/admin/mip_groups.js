@@ -1,5 +1,6 @@
 /**
  * Инициализатор и диспетчер событий для MIP-панели групп (SHUB Core)
+ * ИСПРАВЛЕН: Вызовы win переведены на собственный локальный метод объекта
  */
 const mip_groups = {
     async init() {
@@ -118,15 +119,31 @@ const mip_groups = {
         if (act !== "add" && !row) return alert("Пожалуйста, выберите группу в таблице.");
 
         if (act === "add") {
+            // ИСПРАВЛЕНО: Заменен вызов с внешнего хэндлера на локальный метод mip_groups.win
             mip_groups.win("Создание группы", mip_groups_components.renderAddForm(), async () => {
                 const name = document.getElementById("mg-name").value.trim();
-                if (!name) return alert("Имя группы обязательно!");
-                alert(`Добавить группу: "${name}"`); return true;
+                const description = document.getElementById("mg-desc").value.trim();
+                if (!name) { alert("Имя группы обязательно!"); return false; }
+
+                const res = await (await fetch("/api/mip-g/groups/add", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, description })
+                })).json();
+
+                if (res.success) {
+                    mip_groups.init();
+                    return true;
+                } else {
+                    alert("Ошибка: " + res.message);
+                    return false;
+                }
             });
         }
         else if (act === "edit") {
             const groupId = row.dataset.id;
 
+            // ИСПРАВЛЕНО: Заменен вызов на локальный метод mip_groups.win
             mip_groups.win("Edit Group", mip_groups_components.renderEditForm(row.dataset.name, row.dataset.desc), async () => {
                 const permRows = document.querySelectorAll("#w-rights-tbody .mip-row-perm");
                 const permissionsData = [];
@@ -143,7 +160,7 @@ const mip_groups = {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ group_id: parseInt(groupId), permissions: permissionsData })
                     })).json();
-                    if (!res.success) { alert("Ошибка сохранения прав: " + res.message); return false; }
+                    if (!res.success) { alert("Ошибка保存 прав: " + res.message); return false; }
                 } catch (e) { console.error(e); return false; }
 
                 alert("Изменения успешно сохранены!");
@@ -157,9 +174,9 @@ const mip_groups = {
             if (btnAddMem) {
                 btnAddMem.onclick = async () => {
                     try {
-                        const allUsers = await (await fetch("/api/mip/users")).json();
+                        const allUsers = await (await fetch("/api/users")).json();
                         const optionsHtml = allUsers.map(u => `<option value="${mip_groups.esc(u.username)}">${mip_groups.esc(u.username)} (${mip_groups.esc(u.full_name)})</option>`).join('');
-
+                        // ИСПРАВЛЕНО: Вложенное окно тоже переведено на локальный win
                         mip_groups.win("Select User", mip_groups_components.renderSelectUserForm(optionsHtml), async () => {
                             const selectedUsername = document.getElementById("w-select-user-dropdown").value;
                             if (!selectedUsername) return true;
@@ -195,7 +212,25 @@ const mip_groups = {
             }
         }
         else if (act === "remove") {
-            mip_groups.win("Подтверждение", mip_groups_components.renderConfirmDelete(row.dataset.name), async () => { return true; }, true);
+            const groupId = parseInt(row.dataset.id);
+            const groupName = row.dataset.name;
+
+            // ОЖИВЛЕНО: Окно подтверждения переведено на локальный win
+            mip_groups.win("Подтверждение", mip_groups_components.renderConfirmDelete(groupName), async () => {
+                const res = await (await fetch("/api/mip-g/groups/remove", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: groupId })
+                })).json();
+
+                if (res.success) {
+                    mip_groups.init();
+                    return true;
+                } else {
+                    alert("Ошибка удаления: " + res.message);
+                    return false;
+                }
+            }, true);
         }
     },
 

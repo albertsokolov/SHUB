@@ -18,6 +18,8 @@ static APP_NAME: &str = "SHUB";
 pub fn router() -> Router<DbState> {
     Router::new()
     .route("/groups", get(get_mip_groups_handler))
+    .route("/groups/add", post(add_group_handler))       // ДОБАВЛЕНО
+    .route("/groups/remove", post(delete_group_handler))
     .route("/groups/members", get(get_group_members_handler))
     .route("/groups/members/add", post(add_group_member_handler))
     .route("/groups/members/remove", post(remove_group_member_handler))
@@ -213,5 +215,73 @@ pub async fn remove_group_member_handler(State(db): State<DbState>, cookies: Coo
         },
         Ok(_) => Json(GroupActionResponse { success: false, message: "Пользователь не найден в этой группе".to_string() }).into_response(),
         Err(e) => Json(GroupActionResponse { success: false, message: e.to_string() }).into_response()
+    }
+}
+#[derive(Deserialize)]
+pub struct CreateGroupRequest {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Deserialize)]
+pub struct DeleteGroupRequest {
+    pub id: i64,
+}
+
+// НОВЫЙ ОБРАБОТЧИК: Создание новой группы ролей
+pub async fn add_group_handler(
+    State(db): State<DbState>,
+                               cookies: Cookies,
+                               Json(payload): Json<CreateGroupRequest>,
+) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
+    let group_name = payload.name.trim().to_string();
+    if group_name.is_empty() {
+        return Json(GroupActionResponse { success: false, message: "Имя группы не может быть пустым".to_string() }).into_response();
+    }
+
+    let conn = db.lock().unwrap();
+    match conn.execute(
+        "INSERT INTO group_tab (name, description) VALUES (?, ?)",
+                       (&group_name, &payload.description),
+    ) {
+        Ok(_) => {
+            logger::info(APP_NAME, &format!("Создана новая группа ролей: {}", group_name));
+            Json(GroupActionResponse { success: true, message: "Group added".to_string() }).into_response()
+        },
+        Err(e) => Json(GroupActionResponse { success: false, message: format!("Группа с таким именем уже существует или ошибка БД: {}", e) }).into_response(),
+    }
+}
+
+// НОВЫЙ ОБРАБОТЧИК: Удаление группы ролей
+pub async fn delete_group_handler(
+    State(db): State<DbState>,
+                                  cookies: Cookies,
+                                  Json(payload): Json<DeleteGroupRequest>,
+) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
+    // ЖЕСТКАЯ ЗАЩИТА: Запрещаем удалять системные группы "Администраторы" (ID 1) и "Пользователи" (ID 2)
+    if payload.id == 1 || payload.id == 2 {
+        return Json(GroupActionResponse {
+            success: false,
+            message: "Запрещено удалять встроенные системные группы ролей!".to_string()
+        }).into_response();
+    }
+
+    let conn = db.lock().unwrap();
+    // Благодаря PRAGMA foreign_keys = ON и ON DELETE CASCADE, удаление группы автоматически очистит связи в member_tab и permission_matrix_tab
+    match conn.execute("DELETE FROM group_tab WHERE id = ?", [payload.id]) {
+        Ok(rows) if rows > 0 => {
+            logger::info(APP_NAME, &format!("Удалена группа ролей ID {}", payload.id));
+            Json(GroupActionResponse { success: true, message: "Group removed".to_string() }).into_response()
+        },
+        Ok(_) => Json(GroupActionResponse { success: false, message: "Группа ролей не найдена".to_string() }).into_response(),
+        Err(e) => Json(GroupActionResponse { success: false, message: e.to_string() }).into_response(),
     }
 }

@@ -18,6 +18,8 @@
 │   │   ├── mip_advoptions.js
 │   │   ├── mip_advoptions_misc.js
 │   │   ├── mip_advoptions_store.js
+│   │   ├── mip_domains_components.js
+│   │   ├── mip_domains.js
 │   │   ├── mip_groups_api.js
 │   │   ├── mip_groups_companents.js
 │   │   ├── mip_groups.js
@@ -95,8 +97,9 @@
 │   ├── logger.rs
 │   ├── main.rs
 │   ├── mip_advoptions.rs
+│   ├── mip_domains.rs
 │   ├── mip_group.rs
 │   └── mip_users.rs
 └── tree_all.txt
 
-20 directories, 80 files
+20 directories, 83 files

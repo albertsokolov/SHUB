@@ -372,6 +372,19 @@ function handleHashRouter() {
             mip_groups.init();
             break;
         }
+        case "#domains": {
+            const domainLi = document.querySelector('[data-action="domains"]');
+            if (domainLi) domainLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Domains";
+            // Используем иконку doc-globe (справа вверху в спрайте, идеальный земной шар для доменов)
+            if (titleIcon) titleIcon.className = "icon icon-doc-globe";
+
+            // Рендерим структуру из компонента и запускаем логику панели
+            contentArea.innerHTML = mip_domains_components.render();
+            mip_domains.init();
+            break;
+        }
 
         case "#advancedOptions": {
             const advLi = document.querySelector('[data-action="advancedOptions"]');
