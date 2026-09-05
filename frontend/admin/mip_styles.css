@@ -614,3 +614,26 @@
 .mip-panel-wrapper .x-tab-strip {
     padding-left: 5px !important;
 }
+/* ==========================================================================
+ *   ИСПРАВЛЕНИЕ: Визуальное затенение заблокированных кнопок (disabled)
+ *   ========================================================================== */
+
+/* Переводим кнопку в матовое, блеклое состояние */
+.mip-btn:disabled,
+.mip-btn[disabled] {
+    background: #f0f0f0 !important; /* Убираем градиент, ставим плоский серый фон */
+    border-color: #cccccc !important; /* Делаем рамку блеклой */
+    color: #a0a0a0 !important;        /* Текст становится серым и нечитаемым */
+    cursor: default !important;       /* Убираем указательный палец (курсор-руку) */
+    box-shadow: none !important;      /* Отключаем тени */
+    pointer-events: none;             /* Полностью блокируем ховеры и клики на уровне браузера */
+}
+
+/* На всякий случай жестко отключаем эффекты наведения и нажатия */
+.mip-btn:disabled:hover,
+.mip-btn:disabled:active {
+    background: #f0f0f0 !important;
+    border-color: #cccccc !important;
+    color: #a0a0a0 !important;
+    box-shadow: none !important;
+}

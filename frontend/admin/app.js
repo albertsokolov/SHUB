@@ -187,60 +187,85 @@ function initMenuTabs() {
         tab.addEventListener("click", (e) => {
             e.stopPropagation();
 
-            // ЗАЩИТА: Блокируем переключение, если открыты формы
-            if (document.getElementById("mip-win-overlay")) {
+            // ЗАЩИТА 1: Блокируем переключение, если открыты модальные формы (окна пользователей/групп)
+            if (document.getElementById("mip-win-overlay") || document.getElementById("mip-group-win-overlay")) {
                 alert("Пожалуйста, завершите текущую операцию перед переключением раздела!");
                 return;
             }
 
-            const isAlreadyActive = tab.classList.contains("active");
-
-            tabs.forEach(t => t.classList.remove("active"));
-            tab.classList.add("active");
-
-            const target = tab.getAttribute('data-target');
-            const targetPanelId = `menu_panel_${target}`;
-
-            subPanels.forEach(panel => {
-                if (panel.id === targetPanelId) {
-                    panel.classList.remove("hide");
-                    panel.classList.add("active");
-                } else {
-                    panel.classList.remove("active");
-                    panel.classList.add("hide");
-                }
-            });
-
-            // 1. ЗАПОМИНАЕМ, КАКОЙ ГЛАВНЫЙ СИНИЙ ТАБ СТАЛ АКТИВНЫМ
-            localStorage.setItem('shub_active_tab', target);
-
-            // 2. ВОССТАНАВЛИВАЕМ ПУНКТ ИЛИ АВТОМАТИЧЕСКИ ВЫБИРАЕМ ПЕРВЫЙ
-            const activePanel = document.getElementById(targetPanelId);
-            if (!activePanel) return;
-
-            const menuItems = activePanel.querySelectorAll("li");
-            if (menuItems.length === 0) return;
-
-            // Считываем сохраненное действие (data-action) для текущего таба
-            const savedAction = localStorage.getItem(`shub_sub_item_for_${target}`);
-            let targetItem = null;
-
-            if (savedAction) {
-                targetItem = Array.from(menuItems).find(li => li.getAttribute("data-action") === savedAction);
+            // ПЕРЕХВАТ ИЗМЕНЕНИЙ В ADVANCED OPTIONS
+            // Если мы находимся на вкладке настроек и форма "грязная" (кнопки Apply/Reset активны)
+            if (window.location.hash === "#advancedOptions" && typeof mip_advoptions !== "undefined" && mip_advoptions.isDirty) {
+                mip_advoptions.showLeaveConfirm(
+                    // Действие "Yes" — сохраняем настройки и переходим на выбранный таб
+                    () => {
+                        const btnApply = document.getElementById("adv-btn-apply");
+                        if (btnApply) btnApply.click();
+                        executeTabSwitch(tab, subPanels);
+                    },
+                    // Действие "No" — сбрасываем (откатываем) изменения и переходим на выбранный таб
+                    () => {
+                        const btnReset = document.getElementById("adv-btn-reset");
+                        if (btnReset) btnReset.click();
+                        executeTabSwitch(tab, subPanels);
+                    },
+                    // Действие "Cancel" — ничего не делаем, остаемся на месте
+                    () => {}
+                );
+                return;
             }
 
-            // ПРАВИЛО: Если информации в памяти нет — выбираем САМЫЙ ВЕРХНИЙ пункт меню
-            if (!targetItem) {
-                targetItem = menuItems[0];
-            }
-
-            // Кликаем по подпункту только если мы физически перешли на ДРУГОЙ синий таб
-            if (targetItem && !isAlreadyActive) {
-                targetItem.click();
-            }
+            // Если форма чистая — выполняем обычное переключение
+            executeTabSwitch(tab, subPanels);
         });
     });
 }
+
+// Вспомогательная функция инкапсуляции переключения табов
+function executeTabSwitch(tab, subPanels) {
+    const tabs = document.querySelectorAll(".x-tab-strip li");
+    const isAlreadyActive = tab.classList.contains("active");
+
+    tabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+
+    const target = tab.getAttribute('data-target');
+    const targetPanelId = `menu_panel_${target}`;
+
+    subPanels.forEach(panel => {
+        if (panel.id === targetPanelId) {
+            panel.classList.remove("hide");
+            panel.classList.add("active");
+        } else {
+            panel.classList.remove("active");
+            panel.classList.add("hide");
+        }
+    });
+
+    localStorage.setItem('shub_active_tab', target);
+
+    const activePanel = document.getElementById(targetPanelId);
+    if (!activePanel) return;
+
+    const menuItems = activePanel.querySelectorAll("li");
+    if (menuItems.length === 0) return;
+
+    const savedAction = localStorage.getItem(`shub_sub_item_for_${target}`);
+    let targetItem = null;
+
+    if (savedAction) {
+        targetItem = Array.from(menuItems).find(li => li.getAttribute("data-action") === savedAction);
+    }
+
+    if (!targetItem) {
+        targetItem = menuItems[0];
+    }
+
+    if (targetItem && !isAlreadyActive) {
+        targetItem.click();
+    }
+}
+
 
 /**
  * ЛОГИКА КЛИКОВ ПО ДЕРЕВУ МЕНЮ — Формирует красивый URL и запоминает выбор
@@ -253,30 +278,59 @@ function initMenuTreeClicks() {
         const li = e.target.closest("li");
         if (!li) return;
 
-        const action = li.getAttribute("data-action");
+        // Если пункт уже активен — игнорируем повторный клик
+        if (li.classList.contains("active")) return;
 
-        // Находим, к какому синему табу относится это меню, чтобы записать именно в его ячейку памяти
-        const parentPanel = li.closest(".menu-sub-panel");
-        if (parentPanel) {
-            const tabTarget = parentPanel.id.replace("menu_panel_", "");
-            // Запоминаем конкретное действие нажатого пункта меню
-            localStorage.setItem(`shub_sub_item_for_${tabTarget}`, action);
+        // ПЕРЕХВАТ ИЗМЕНЕНИЙ В ADVANCED OPTIONS ПРИ КЛИКЕ НА БОКОВОЕ МЕНЮ
+        if (window.location.hash === "#advancedOptions" && typeof mip_advoptions !== "undefined" && mip_advoptions.isDirty) {
+            mip_advoptions.showLeaveConfirm(
+                // Действие "Yes" — имитируем нажатие Apply и уходим на новый хэш
+                () => {
+                    const btnApply = document.getElementById("adv-btn-apply");
+                    if (btnApply) btnApply.click();
+                    executeMenuNavigation(li);
+                },
+                // Действие "No" — имитируем нажатие Reset (сброс) и уходим на новый хэш
+                () => {
+                    const btnReset = document.getElementById("adv-btn-reset");
+                    if (btnReset) btnReset.click();
+                    executeMenuNavigation(li);
+                },
+                // Действие "Cancel" — остаемся на текущей странице
+                () => {}
+            );
+            return;
         }
 
-        let targetHash = "dashboard";
-        if (action === "user-list") {
-            targetHash = "users";
-        } else if (action === "dashboard") {
-            targetHash = "dashboard";
-        } else {
-            targetHash = action;
-        }
-
-        const targetUrl = `/admin/#${targetHash}`;
-        window.history.pushState({ hash: `#${targetHash}` }, "", targetUrl);
-        handleHashRouter();
+        // Обычная навигация, если изменений не было
+        executeMenuNavigation(li);
     });
 }
+
+// Вспомогательная функция записи состояния в память и смены хэша
+function executeMenuNavigation(li) {
+    const action = li.getAttribute("data-action");
+    const parentPanel = li.closest(".menu-sub-panel");
+
+    if (parentPanel) {
+        const tabTarget = parentPanel.id.replace("menu_panel_", "");
+        localStorage.setItem(`shub_sub_item_for_${tabTarget}`, action);
+    }
+
+    let targetHash = "dashboard";
+    if (action === "user-list") {
+        targetHash = "users";
+    } else if (action === "dashboard") {
+        targetHash = "dashboard";
+    } else {
+        targetHash = action;
+    }
+
+    const targetUrl = `/admin/#${targetHash}`;
+    window.history.pushState({ hash: `#${targetHash}` }, "", targetUrl);
+    handleHashRouter();
+}
+
 
 /**
  * ГЛОБАЛЬНЫЙ ХЭШ-РОУТЕР (Управляет отображением MIP-панелей)
