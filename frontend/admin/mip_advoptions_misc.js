@@ -4,14 +4,6 @@
 const mip_advoptions_misc = {
     render: () => `
     <div id="adv-tab-content-misc" class="adv-tab-pane" style="display:flex; flex-direction:column; gap:30px">
-    <fieldset class="adv-fs">
-    <legend>Directory location</legend>
-    <div class="adv-row"><label>Path to the store directory:</label><input type="text" id="adv-store-path" class="mip-form-input" style="flex:1; max-width:400px" value="/store/"><button class="mip-btn">Select Folder...</button></div>
-    <div class="adv-info">
-    <div>ℹ Network storage is not recommended. It can cause corruption of files. <a href="#">Learn more...</a></div>
-    <div>ℹ If you change the path, you must stop the server, copy old files to the new location and restart.</div>
-    </div>
-    </fieldset>
 
     <fieldset class="adv-fs">
     <legend>Full text search</legend>
@@ -40,8 +32,7 @@ const mip_advoptions_misc = {
     </div>`,
 
     serialize: () => ({
-        path: document.getElementById("adv-store-path")?.value || "",
-                      search: document.getElementById("adv-enable-search")?.checked || false,
+        search: document.getElementById("adv-enable-search")?.checked || false,
                       soft: document.getElementById("adv-watchdog-soft")?.value || "",
                       soft_u: document.getElementById("adv-watchdog-soft-unit")?.value || "GB",
                       hard: document.getElementById("adv-watchdog-hard")?.value || "",
@@ -54,7 +45,6 @@ const mip_advoptions_misc = {
     deserialize: (data) => {
         if (!data) return;
         const setVal = (id, val, prop = 'value') => { const el = document.getElementById(id); if (el) el[prop] = val; };
-        setVal("adv-store-path", data.path);
         setVal("adv-enable-search", data.search, "checked");
         setVal("adv-watchdog-soft", data.soft);
         setVal("adv-watchdog-soft-unit", data.soft_u);
