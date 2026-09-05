@@ -18,6 +18,7 @@
 │   │   ├── mip_advoptions.js
 │   │   ├── mip_advoptions_misc.js
 │   │   ├── mip_advoptions_store.js
+│   │   ├── mip_groups_api.js
 │   │   ├── mip_groups_companents.js
 │   │   ├── mip_groups.js
 │   │   ├── mip_styles.css
@@ -88,8 +89,6 @@
 ├── git_download.sh
 ├── .gitignore
 ├── git_upload.sh
-├── SHUB.db
-├── SHUB.log
 ├── src
 │   ├── db_init.rs
 │   ├── db_tools.rs
@@ -100,4 +99,4 @@
 │   └── mip_users.rs
 └── tree_all.txt
 
-20 directories, 81 files
+20 directories, 80 files

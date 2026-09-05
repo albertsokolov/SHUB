@@ -335,9 +335,6 @@ function executeMenuNavigation(li) {
 /**
  * ГЛОБАЛЬНЫЙ ХЭШ-РОУТЕР (Управляет отображением MIP-панелей)
  */
-/**
- * ГЛОБАЛЬНЫЙ ХЭШ-РОУТЕР (Управляет отображением MIP-панелей)
- */
 function handleHashRouter() {
     const hash = window.location.hash || "#dashboard";
     const contentArea = document.getElementById("main-content");
@@ -349,74 +346,88 @@ function handleHashRouter() {
     // Сбрасываем старую подсветку со всех списков во всех левых панелях
     document.querySelectorAll(".menu-tree li").forEach(li => li.classList.remove("active"));
 
-    // Маршрутизация по хэшам
-    if (hash === "#users") {
-        const userLi = document.querySelector('[data-action="user-list"]');
-        if (userLi) userLi.classList.add("active");
+    // МАРШРУТИЗАЦИЯ ПО ХЭШАМ
+    switch (hash) {
+        case "#users": {
+            const userLi = document.querySelector('[data-action="user-list"]');
+            if (userLi) userLi.classList.add("active");
 
-        if (titleText) titleText.innerText = "Список пользователей";
-        if (titleIcon) titleIcon.className = "icon icon-user";
+            if (titleText) titleText.innerText = "Список пользователей";
+            if (titleIcon) titleIcon.className = "icon icon-user";
 
-        // Рендерим и инициализируем MIP-панель пользователей
-        contentArea.innerHTML = mip_users_components.render();
-        mip_users.init();
-
-    } else if (hash === "#group-list") {
-        const groupLi = document.querySelector('[data-action="group-list"]');
-        if (groupLi) groupLi.classList.add("active");
-
-        if (titleText) titleText.innerText = "Группы и роли";
-        if (titleIcon) titleIcon.className = "icon icon-groups";
-
-        // Рендерим и инициализируем MIP-панель групп
-        contentArea.innerHTML = mip_groups_components.render();
-        mip_groups.init();
-
-    } else if (hash === "#advancedOptions") {
-        const advLi = document.querySelector('[data-action="advancedOptions"]');
-        if (advLi) advLi.classList.add("active");
-
-        if (titleText) titleText.innerText = "Advanced Options";
-        if (titleIcon) titleIcon.className = "icon icon-tools";
-
-        // Рендерим и инициализируем MIP-панель расширенных настроек
-        contentArea.innerHTML = mip_advoptions.render();
-        mip_advoptions.init();
-
-    } else if (hash === "#dashboard") {
-        const dashLi = document.querySelector('[data-action="dashboard"]');
-        if (dashLi) dashLi.classList.add("active");
-
-        if (titleText) titleText.innerText = "Dashboard";
-        if (titleIcon) titleIcon.className = "icon icon-dashboard";
-
-        contentArea.innerHTML = `
-        <div class="section-block" style="margin: 20px;">
-        <h4 style="color: #15428b; border-bottom: 1px dotted #a3bae9; padding-bottom: 4px; margin-top: 0;">Система</h4>
-        <table style="width: 100%; font-size: 13px; color: #333;">
-        <tr><td style="width: 200px; padding: 4px 0;">Версия:</td><td>9.x (SQLCipher Core)</td></tr>
-        <tr><td style="padding: 4px 0;">Операционная система:</td><td>Arch Linux</td></tr>
-        <tr><td style="padding: 4px 0;">Имя хоста:</td><td>master-hub.local</td></tr>
-        </table>
-        </div>
-        `;
-    } else {
-        // Заглушка для остальных MIP-панелей, которые мы будем создавать далее
-        const dynamicLi = document.querySelector(`[data-action="${hash.replace('#', '')}"]`);
-        if (dynamicLi) {
-            dynamicLi.classList.add("active");
-            if (titleText) titleText.innerText = dynamicLi.textContent.trim();
-            if (titleIcon) titleIcon.className = dynamicLi.querySelector(".icon").className;
+            contentArea.innerHTML = mip_users_components.render();
+            mip_users.init();
+            break;
         }
 
-        contentArea.innerHTML = `
-        <div style="padding: 20px; color: #666;">
-        <h3>Панель в разработке</h3>
-        <p>MIP-компонент для адреса <b>${hash}</b> подключен к роутеру и ожидает верстки фронтенда.</p>
-        </div>
-        `;
+        case "#group-list": {
+            const groupLi = document.querySelector('[data-action="group-list"]');
+            if (groupLi) groupLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Группы и роли";
+            if (titleIcon) titleIcon.className = "icon icon-groups";
+
+            // Гарантированный рендер панели групп
+            contentArea.innerHTML = mip_groups_components.render();
+            mip_groups.init();
+            break;
+        }
+
+        case "#advancedOptions": {
+            const advLi = document.querySelector('[data-action="advancedOptions"]');
+            if (advLi) advLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Advanced Options";
+            if (titleIcon) titleIcon.className = "icon icon-tools";
+
+            contentArea.innerHTML = mip_advoptions.render();
+            mip_advoptions.init();
+            break;
+        }
+
+        case "#dashboard": {
+            const dashLi = document.querySelector('[data-action="dashboard"]');
+            if (dashLi) dashLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Dashboard";
+            if (titleIcon) titleIcon.className = "icon icon-dashboard";
+
+            contentArea.innerHTML = `
+            <div class="section-block" style="margin: 20px;">
+            <h4 style="color: #15428b; border-bottom: 1px dotted #a3bae9; padding-bottom: 4px; margin-top: 0;">Система</h4>
+            <table style="width: 100%; font-size: 13px; color: #333;">
+            <tr><td style="width: 200px; padding: 4px 0;">Версия:</td><td>9.x (SQLCipher Core)</td></tr>
+            <tr><td style="padding: 4px 0;">Операционная система:</td><td>Arch Linux</td></tr>
+            <tr><td style="padding: 4px 0;">Имя хоста:</td><td>master-hub.local</td></tr>
+            </table>
+            </div>`;
+            break;
+        }
+
+        default: {
+            // Изолированная обработка заглушек для нереализованных панелей (типа #sessions, #msg-queue и т.д.)
+            const cleanAction = hash.replace('#', '');
+            const dynamicLi = document.querySelector(`[data-action="${cleanAction}"]`);
+
+            if (dynamicLi) {
+                dynamicLi.classList.add("active");
+                if (titleText) titleText.innerText = dynamicLi.textContent.trim();
+                if (titleIcon) titleIcon.className = dynamicLi.querySelector(".icon")?.className || "icon icon-doc-cfg";
+            } else {
+                if (titleText) titleText.innerText = "Панель в разработке";
+                if (titleIcon) titleIcon.className = "icon icon-doc-warn";
+            }
+
+            contentArea.innerHTML = `
+            <div style="padding: 20px; color: #666; font-family: Tahoma, sans-serif;">
+            <h3>Панель в разработке</h3>
+            <p>MIP-компонент для адреса <b>${hash}</b> подключен к роутеру и ожидает верстки фронтенда.</p>
+            </div>`;
+            break;
+        }
     }
 }
+
 
 /**
  * ФАНТОМНЫЙ РЕСАЙЗЕР ДЛЯ MENU-PANEL

@@ -56,15 +56,13 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     [],
     )?;
 
-    // 5. Таблица программных модулей доменов (module_tab)
+    // 5. Таблица программных модулей (module_tab)
+    // ИСПРАВЛЕНИЕ: Убрали domain_id, UNIQUE(domain_id, name) и FOREIGN KEY
     conn.execute(
         "CREATE TABLE IF NOT EXISTS module_tab (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            domain_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            description TEXT,
-            UNIQUE(domain_id, name),
-                 FOREIGN KEY (domain_id) REFERENCES domain_tab(id) ON DELETE CASCADE
+            name TEXT NOT NULL UNIQUE,
+            description TEXT
     )",
     [],
     )?;
@@ -127,14 +125,14 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
                      [],
         )?;
     }
-    let default_domain_id: i64 = conn.query_row("SELECT id FROM domain_tab WHERE name = 'Local Domain'", [], |r| r.get(0))?;
 
-    // --- 3. Дефолтный модуль для этого домена ---
+    // --- 3. Дефолтный модуль ---
+    // ИСПРАВЛЕНИЕ: Убрали вставку default_domain_id, поле name теперь гарантированно UNIQUE
     let module_count: i64 = conn.query_row("SELECT COUNT(*) FROM module_tab", [], |r| r.get(0))?;
     if module_count == 0 {
         conn.execute(
-            "INSERT INTO module_tab (domain_id, name, description) VALUES (?, 'Core Auth', 'Системный модуль авторизации и управления')",
-                     [default_domain_id],
+            "INSERT INTO module_tab (name, description) VALUES ('Core Auth', 'Системный модуль авторизации и управления')",
+                     [],
         )?;
     }
     let default_module_id: i64 = conn.query_row("SELECT id FROM module_tab WHERE name = 'Core Auth'", [], |r| r.get(0))?;
@@ -177,7 +175,6 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
                      ("admin", "Иван Иванов", "admin@kapavto.by", "Системный администратор", "12344"),
         )?;
         let new_admin_id: i64 = conn.query_row("SELECT id FROM user_tab WHERE username = 'admin'", [], |r| r.get(0))?;
-        // Добавляем админа в группу администраторов
         conn.execute("INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)", [new_admin_id, admin_group_id])?;
     }
 
@@ -189,7 +186,6 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
                      ("user", "Петр Петров", "petrov@kapavto.by", "Менеджер", "12344"),
         )?;
         let new_user_id: i64 = conn.query_row("SELECT id FROM user_tab WHERE username = 'user'", [], |r| r.get(0))?;
-        // Добавляем пользователя в обычную группу пользователей
         conn.execute("INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)", [new_user_id, user_group_id])?;
     }
 
