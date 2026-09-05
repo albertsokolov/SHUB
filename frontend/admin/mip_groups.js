@@ -57,7 +57,7 @@ const mip_groups = {
             };
             if (filterInput) filterInput.oninput = applyFilters;
 
-            // ОБЪЕДИНЕННЫЙ СЛУШАТЕЛЕЙ СОБЫТИЙ ТАБЛИЦЫ (ЛКМ, ПКМ, ДВУКЛИК)
+            // ОБРАБОТЧИК КЛИКОВ (ЛКМ, ПКМ, ДВУКЛИК)
             tbody.onmousedown = (e) => {
                 const row = e.target.closest(".mip-row");
                 if (!row) return;
@@ -99,14 +99,12 @@ const mip_groups = {
     },
     closeMenu: () => document.getElementById("mip-active-menu")?.remove(),
 
-    cmd(act, row) {
+    async cmd(act, row) {
         this.closeMenu();
         if (act !== "add" && !row) return alert("Пожалуйста, выберите группу в таблице.");
 
         if (act === "add") {
-            const html = `<div class="mip-form-group"><label>Имя группы:</label><input type="text" id="mg-name" class="mip-form-input" autocomplete="off"></div>
-            <div class="mip-form-group"><label>Описание:</label><input type="text" id="mg-desc" class="mip-form-input" autocomplete="off"></div>`;
-            this.win("Создание группы", html, async () => {
+            mip_groups_handlers.win("Создание группы", mip_groups_components.renderAddForm(), async () => {
                 const name = document.getElementById("mg-name").value.trim();
                 if (!name) return alert("Имя группы обязательно!");
                 alert(`Добавить группу: "${name}"`); return true;
@@ -115,155 +113,58 @@ const mip_groups = {
         else if (act === "edit") {
             const groupId = row.dataset.id;
 
-            // ФОРМИРУЕМ ОКНО РЕДАКТИРОВАНИЯ С ФИКСИРОВАННЫМ РАЗМЕРОМ 320px ДЛЯ ВСЕХ ВКЛАДОК
-            const html = `
-            <!-- Вкладки ExtJS стиля -->
-            <ul class="x-tab-strip" style="margin-top:0; margin-bottom:15px; flex-direction:row; height:24px; width:100%; border-bottom:1px solid #99bbe8">
-            <li class="active" data-win-tab="general" style="background:none; width:70px; height:23px; text-align:center; line-height:23px; border:1px solid #99bbe8; border-bottom:none; border-radius:3px 3px 0 0">General</li>
-            <li data-win-tab="members" style="background:none; width:70px; height:23px; text-align:center; line-height:23px; border:1px solid transparent; border-bottom:none; border-radius:3px 3px 0 0">Members</li>
-            <li data-win-tab="rights" style="background:none; width:70px; height:23px; text-align:center; line-height:23px; border:1px solid transparent; border-bottom:none; border-radius:3px 3px 0 0">Rights</li>
-            </ul>
-
-            <!-- Контент вкладки 1: General (Высота 320px) -->
-            <div id="w-tab-general" class="win-tab-content" style="height:320px; display:flex; flex-direction:column; gap:10px; padding-top:5px">
-            <div class="mip-form-group"><label>Name:</label><input type="text" id="mg-name" class="mip-form-input" value="${row.dataset.name}" disabled style="background:#e9e9e9;color:#666"></div>
-            <div class="mip-form-group"><label>Description:</label><input type="text" id="mg-desc" class="mip-form-input" value="${row.dataset.desc}"></div>
-            </div>
-
-            <!-- Контент вкладки 2: Members (Высота 320px в соответствии с макетом) -->
-            <div id="w-tab-members" class="win-tab-content" style="display:none; height:320px; box-sizing:border-box; padding-top:5px">
-            <div style="display:flex; gap:10px; height:100%; width:100%">
-            <!-- Сетка со списком пользователей -->
-            <div class="mip-table-container" style="flex:1; margin:0; border:1px solid #a3bae9; overflow-y:auto; background:#fff;">
-            <table class="mip-grid">
-            <thead>
-            <tr style="background: linear-gradient(to bottom, #f9fbfd, #e2eefb); height:22px; border-bottom:1px solid #a3bae9">
-            <th style="width:30%; color:#15428b; font-weight:normal; padding:2px 6px">Name ▾</th>
-            <th style="width:35%; color:#15428b; font-weight:normal; padding:2px 6px">Full Name</th>
-            <th style="width:35%; color:#15428b; font-weight:normal; padding:2px 6px">Description</th>
-            </tr>
-            </thead>
-            <tbody id="w-members-tbody">
-            <!-- Системный группировочный заголовок папки USERS -->
-            <tr style="background:#f0f4f8; font-weight:bold; height:20px; user-select:none">
-            <td colspan="3" style="padding:2px 6px; display:flex; align-items:center; gap:6px; border:none">
-            <span class="icon icon-net-tree" style="width:16px; height:16px; background-size:900% 500%!important; margin:0"></span>
-            <span style="color:#15428b; font-family:Tahoma; font-size:11px">USERS</span>
-            </td>
-            </tr>
-            <!-- Сюда динамически вставятся строки участников -->
-            </tbody>
-            </table>
-            </div>
-            <!-- Правая боковая панель кнопок управления участниками -->
-            <div style="width:100px; flex-shrink:0; display:flex; flex-direction:column; gap:6px">
-            <button class="mip-btn" style="width:100%" onclick="alert('Выбор пользователей из базы...')">Add Users...</button>
-            <button class="mip-btn" style="width:100%" disabled style="background:#e9e9e9; color:#999">Add Groups...</button>
-            <button class="mip-btn" style="width:100%; margin-top:auto" onclick="alert('Удаление участника...')">Remove</button>
-            </div>
-            </div>
-            </div>
-
-            <!-- Контент вкладки 3: Rights (Высота 320px) -->
-            <div id="w-tab-rights" class="win-tab-content" style="display:none; height:320px; box-sizing:border-box; padding-top:5px">
-            <div style="border:1px solid #a3bae9; background:#fff; height:100%; padding:8px; overflow-y:auto; color:#666">
-            Матрица прав доступа к модулям домена подгружается...
-            </div>
-            </div>
-            `;
-
-            this.win("Edit Group", html, async () => {
+            mip_groups_handlers.win("Edit Group", mip_groups_components.renderEditForm(row.dataset.name, row.dataset.desc), async () => {
                 const desc = document.getElementById("mg-desc").value.trim();
                 alert(`Сохранение изменений группы "${row.dataset.name}". Описание: "${desc}"`);
                 return true;
-            }, false, "640px"); // Увеличили общую ширину окна до 640px под макет
+            }, false, "640px");
 
-            // Запускаем асинхронную подгрузку участников для этой группы
-            this.loadMembers(groupId);
-        }
-        else if (act === "remove") {
-            const html = `<div class="mip-confirm-icon-question">?</div><div class="mip-confirm-text">Вы уверены, что хотите удалить группу "${row.dataset.name}"?</div>`;
-            this.win("Подтверждение", html, async () => { alert(`Удалить группу ID ${row.dataset.id}`); return true; }, true);
-        }
-    },
+            mip_groups_handlers.loadMembers(groupId);
 
-    // Вспомогательный метод для асинхронной загрузки и рендера участников
-    async loadMembers(groupId) {
-        const mBody = document.getElementById("w-members-tbody");
-        if (!mBody) return;
-        try {
-            const members = await (await fetch(`/api/mip-g/groups/members?id=${groupId}`)).json();
+            // КНОПКА ДОБАВЛЕНИЯ УЧАСТНИКА
+            document.getElementById("w-btn-add-member").onclick = async () => {
+                try {
+                    const allUsers = await (await fetch("/api/mip/users")).json();
+                    const optionsHtml = allUsers.map(u => `<option value="${this.esc(u.username)}">${this.esc(u.username)} (${this.esc(u.full_name)})</option>`).join('');
 
-            // Рендерим строки участников сразу под заголовком USERS
-            const rowsHtml = members.map(m => `
-            <tr class="mip-row" style="height:20px; border-bottom:1px solid #ededed; background:#fff">
-            <td style="display:flex; align-items:center; gap:6px; border:none; padding:3px 6px">
-            <span class="icon icon-user" style="width:16px; height:16px; background-size:900% 500%!important; margin:0; flex-shrink:0"></span>
-            <span>${this.esc(m.username)}</span>
-            </td>
-            <td style="padding:3px 6px">${this.esc(m.fullname)}</td>
-            <td style="padding:3px 6px">${this.esc(m.description)}</td>
-            </tr>`).join('');
+                    mip_groups_handlers.win("Select User", mip_groups_components.renderSelectUserForm(optionsHtml), async () => {
+                        const selectedUsername = document.getElementById("w-select-user-dropdown").value;
+                        if (!selectedUsername) return true;
 
-            mBody.insertAdjacentHTML('beforeend', rowsHtml);
+                        const res = await (await fetch("/api/mip-g/groups/members/add", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ group_id: parseInt(groupId), username: selectedUsername })
+                        })).json();
 
-            // Добавляем выделение по клику на строку участника внутри модального окна
-            mBody.onclick = (e) => {
-                const row = e.target.closest(".mip-row");
-                if (row) {
-                    mBody.querySelectorAll(".mip-row").forEach(r => r.style.background = "#fff");
-                    row.style.background = "#cbdcf2";
+                        if (res.success) { mip_groups_handlers.loadMembers(groupId); return true; }
+                        alert("Ошибка: " + res.message); return false;
+                    }, true, "320px");
+                } catch (e) { console.error(e); }
+            };
+
+            // КНОПКА УДАНЕНИЯ УЧАСТНИКА
+            document.getElementById("w-btn-remove-member").onclick = async () => {
+                const selectedRow = document.querySelector("#w-members-tbody .mip-row.selected-member");
+                if (!selectedRow) return alert("Пожалуйста, выберите пользователя в списке участников для удаления!");
+
+                const memberUsername = selectedRow.dataset.username;
+                if (confirm(`Вы уверены, что хотите удалить пользователя "${memberUsername}" из этой группы?`)) {
+                    const res = await (await fetch("/api/mip-g/groups/members/remove", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ group_id: parseInt(groupId), username: memberUsername })
+                    })).json();
+
+                    res.success ? mip_groups_handlers.loadMembers(groupId) : alert("Ошибка: " + res.message);
                 }
             };
-        } catch (err) {
-            console.error("Ошибка загрузки участников группы:", err);
         }
-    },
-
-
-    win(title, bodyHtml, onOk, isConfirm = false, customWidth = "330px") {
-        const id = "mip-group-win-overlay", cls = isConfirm ? "mip-confirm-window" : "mip-modal-window";
-        if (document.getElementById(id)) return;
-
-        const overlay = document.createElement("div");
-        Object.assign(overlay, { id, className: "mip-modal-overlay" });
-        overlay.innerHTML = `
-        <div class="${cls}" style="width: ${customWidth}">
-        <div class="mip-modal-header">
-        <div class="mip-modal-title">${!isConfirm ? '<span class="icon icon-groups" style="width:14px;height:14px;background-size:900% 500%"></span>' : ''}<span>${title}</span></div>
-        <div class="mip-modal-close-btn" id="mg-close">X</div>
-        </div>
-        <div class="${isConfirm ? 'mip-confirm-body' : 'mip-modal-body'}">${bodyHtml}</div>
-        <div class="mip-modal-footer">
-        <button class="mip-btn" id="mg-ok" style="font-weight:bold">${isConfirm ? 'Да' : 'OK'}</button>
-        <button class="mip-btn" id="mg-cancel">${isConfirm ? 'Нет' : 'Cancel'}</button>
-        </div>
-        </div>`;
-        document.body.appendChild(overlay);
-
-        // ИНИЦИАЛИЗАЦИЯ ИНТЕРАКТИВНЫХ ТАБОВ ВНУТРИ ОКНА
-        const winTabs = overlay.querySelectorAll("[data-win-tab]");
-        if (winTabs.length > 0) {
-            winTabs.forEach(tab => {
-                tab.onclick = (e) => {
-                    e.stopPropagation();
-                    winTabs.forEach(t => {
-                        t.classList.remove("active");
-                        t.style.borderColor = "transparent";
-                    });
-                    tab.classList.add("active");
-                    tab.style.borderColor = "#99bbe8";
-
-                    overlay.querySelectorAll(".win-tab-content").forEach(c => c.style.display = "none");
-                    const targetContent = overlay.querySelector(`#w-tab-${tab.dataset.winTab}`);
-                    if (targetContent) targetContent.style.display = "block";
-                };
-            });
+        else if (act === "remove") {
+            mip_groups_handlers.win("Подтверждение", mip_groups_components.renderConfirmDelete(row.dataset.name), async () => {
+                alert(`Удалить группу ID ${row.dataset.id}`); return true;
+            }, true);
         }
-
-        const close = () => overlay.remove();
-        document.getElementById("mg-close").onclick = document.getElementById("mg-cancel").onclick = close;
-        document.getElementById("mg-ok").onclick = async () => { if (await onOk() !== false) close(); };
     },
 
     esc: str => str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '—'

@@ -10,15 +10,17 @@ use std::sync::{Arc, Mutex};
 use rusqlite::Connection;
 use tower_cookies::Cookies;
 use crate::db_tools;
+use crate::logger;
 
 type DbState = Arc<Mutex<Connection>>;
+static APP_NAME: &str = "SHUB";
 
 pub fn router() -> Router<DbState> {
     Router::new()
     .route("/groups", get(get_mip_groups_handler))
     .route("/groups/members", get(get_group_members_handler))
-    .route("/groups/members/add", post(add_group_member_handler))       // Новый
-    .route("/groups/members/remove", post(remove_group_member_handler)) // Новый
+    .route("/groups/members/add", post(add_group_member_handler))
+    .route("/groups/members/remove", post(remove_group_member_handler))
 }
 
 #[derive(Serialize)]
@@ -111,9 +113,12 @@ pub async fn add_group_member_handler(
     }
     let conn = db.lock().unwrap();
 
-    // Запрещаем менять состав системных администраторов для безопасности
+    // ЖЕСТКАЯ ЗАЩИТА: Запрещаем менять состав системных администраторов (ID группы = 1) для безопасности
     if payload.group_id == 1 && payload.username != "admin" {
-        return Json(GroupActionResponse { success: false, message: "Нельзя модифицировать группу системных администраторов".to_string() }).into_response();
+        return Json(GroupActionResponse {
+            success: false,
+            message: "Нельзя добавлять сторонних пользователей в группу системных администраторов".to_string()
+        }).into_response();
     }
 
     // Ищем ID пользователя по юзернейму
@@ -130,7 +135,10 @@ pub async fn add_group_member_handler(
                 return Json(GroupActionResponse { success: false, message: "Пользователь уже состоит в этой группе".to_string() }).into_response();
             }
             match db_tools::add_group_member(&conn, user_id, payload.group_id) {
-                Ok(_) => Json(GroupActionResponse { success: true, message: "Member added".to_string() }).into_response(),
+                Ok(_) => {
+                    logger::info(APP_NAME, &format!("Пользователь {} добавлен в группу ID {}", payload.username, payload.group_id));
+                    Json(GroupActionResponse { success: true, message: "Member added".to_string() }).into_response()
+                },
                 Err(e) => Json(GroupActionResponse { success: false, message: e.to_string() }).into_response()
             }
         }
@@ -149,13 +157,19 @@ pub async fn remove_group_member_handler(
     }
     let conn = db.lock().unwrap();
 
-    // Запрещаем удалять корневого admin из группы Администраторы
+    // Запрещаем удалять корневого admin из группы Администраторы (ID группы = 1)
     if payload.group_id == 1 && payload.username == "admin" {
-        return Json(GroupActionResponse { success: false, message: "Нельзя удалить корневого администратора из его роли".to_string() }).into_response();
+        return Json(GroupActionResponse {
+            success: false,
+            message: "Нельзя удалить корневого администратора из его роли".to_string()
+        }).into_response();
     }
 
     match db_tools::remove_group_member(&conn, &payload.username, payload.group_id) {
-        Ok(rows) if rows > 0 => Json(GroupActionResponse { success: true, message: "Member removed".to_string() }).into_response(),
+        Ok(rows) if rows > 0 => {
+            logger::info(APP_NAME, &format!("Пользователь {} удален из группы ID {}", payload.username, payload.group_id));
+            Json(GroupActionResponse { success: true, message: "Member removed".to_string() }).into_response()
+        },
         Ok(_) => Json(GroupActionResponse { success: false, message: "Пользователь не найден в этой группе".to_string() }).into_response(),
         Err(e) => Json(GroupActionResponse { success: false, message: e.to_string() }).into_response()
     }
