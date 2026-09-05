@@ -1,0 +1,103 @@
+.
+├── Cargo.toml
+├── frontend
+│   ├── admin
+│   │   ├── app.js
+│   │   ├── help
+│   │   │   └── en
+│   │   │       └── legalnotices.html
+│   │   ├── img
+│   │   │   ├── hub-blue.png
+│   │   │   ├── icons-sprite.png
+│   │   │   ├── icons-sprite.png-orig
+│   │   │   ├── menuTabsIcons.png
+│   │   │   └── shub-logo-transparent.png
+│   │   ├── index.html
+│   │   ├── login
+│   │   │   └── index.html
+│   │   ├── mip_advoptions.js
+│   │   ├── mip_advoptions_misc.js
+│   │   ├── mip_advoptions_store.js
+│   │   ├── mip_groups_companents.js
+│   │   ├── mip_groups.js
+│   │   ├── mip_styles.css
+│   │   ├── mip_users_companents.js
+│   │   ├── mip_users.js
+│   │   ├── mp_accounts.js
+│   │   ├── mp_configuration.js
+│   │   ├── mp_logs.js
+│   │   ├── mp_status.js
+│   │   ├── resources
+│   │   │   ├── css
+│   │   │   │   └── app.css
+│   │   │   └── images
+│   │   │       ├── big
+│   │   │       │   ├── backup.png
+│   │   │       │   ├── directoryService.png
+│   │   │       │   ├── export.png
+│   │   │       │   ├── externalSharing.png
+│   │   │       │   ├── samepage.png
+│   │   │       │   ├── updateChecker.png
+│   │   │       │   └── workspace.png
+│   │   │       ├── favicon.ico
+│   │   │       ├── menuIcons.png
+│   │   │       ├── sophos.png
+│   │   │       ├── splashBackground.png
+│   │   │       └── userGroupDomain.png
+│   │   ├── styles.css
+│   │   └── translations
+│   │       ├── cs.js
+│   │       ├── cs_login.js
+│   │       ├── de.js
+│   │       ├── de_login.js
+│   │       ├── en.js
+│   │       ├── en_login.js
+│   │       ├── ru.js
+│   │       └── ru_login.js
+│   ├── client
+│   │   ├── app.js
+│   │   ├── img
+│   │   │   ├── icons.png
+│   │   │   ├── loading.gif
+│   │   │   ├── loading-image.gif
+│   │   │   ├── loading-image-light.gif
+│   │   │   ├── loading-small.gif
+│   │   │   ├── pattern.png
+│   │   │   ├── quota-status.png
+│   │   │   ├── search-trigger.png
+│   │   │   ├── tool-sprites.png
+│   │   │   ├── top-bg.png
+│   │   │   └── trigger-date.png
+│   │   └── index.html
+│   ├── img
+│   │   ├── hub-blue.png
+│   │   ├── menuIconsBig.png
+│   │   ├── menuIcons.png
+│   │   └── menuTabsIcons.png
+│   ├── lib
+│   ├── login
+│   │   ├── img
+│   │   └── index.html
+│   └── translations
+│       ├── en.js
+│       ├── en_login.js
+│       ├── pl.js
+│       ├── pl_login.js
+│       ├── ru.js
+│       └── ru_login.js
+├── git_download.sh
+├── .gitignore
+├── git_upload.sh
+├── SHUB.db
+├── SHUB.log
+├── src
+│   ├── db_init.rs
+│   ├── db_tools.rs
+│   ├── logger.rs
+│   ├── main.rs
+│   ├── mip_advoptions.rs
+│   ├── mip_group.rs
+│   └── mip_users.rs
+└── tree_all.txt
+
+20 directories, 81 files
