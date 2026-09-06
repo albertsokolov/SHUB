@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Result};
 
-/// Инициализация новой структуры таблиц и матрицы прав в БД SQLite/SQLCipher
+/// Инициализация структуры таблиц автоматизации и матрицы прав в БД SQLite/SQLCipher
 pub fn init_tables(conn: &Connection) -> Result<()> {
     // Включаем поддержку внешних ключей в сессии SQLite
     conn.execute("PRAGMA foreign_keys = ON;", [])?;
@@ -57,7 +57,6 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     )?;
 
     // 5. Таблица программных модулей (module_tab)
-    // ИСПРАВЛЕНИЕ: Убрали domain_id, UNIQUE(domain_id, name) и FOREIGN KEY
     conn.execute(
         "CREATE TABLE IF NOT EXISTS module_tab (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +66,31 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     [],
     )?;
 
-    // 6. Таблица групп пользователей / ролей (group_tab)
+    // 6. Таблица СЕРВИСОВ (services_tab) — Наборы скриптов и автоматизаций
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS services_tab (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT
+    )",
+    [],
+    )?;
+
+    // 7. Таблица ПОРТОВ (ports_tab) — Портативные Bash/PowerShell скрипты и команды
+    // ДОБАВЛЕНО: service_id для связывания портативного скрипта с его родительским сервисом
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS ports_tab (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_id INTEGER,
+            name TEXT NOT NULL,
+            description TEXT,
+            interpreter TEXT, -- 'bash', 'powershell', 'native_cmd'
+    FOREIGN KEY (service_id) REFERENCES services_tab(id) ON DELETE SET NULL
+    )",
+    [],
+    )?;
+
+    // 8. Таблица групп пользователей / ролей (group_tab)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS group_tab (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,7 +100,7 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     [],
     )?;
 
-    // 7. Таблица членства пользователей в группах (member_tab)
+    // 9. Таблица членства пользователей в группах (member_tab)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS member_tab (
             user_id INTEGER NOT NULL,
@@ -89,7 +112,7 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     [],
     )?;
 
-    // 8. Матрица прав доступа (permission_matrix_tab)
+    // 10. Матрица прав доступа (permission_matrix_tab)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS permission_matrix_tab (
             group_id INTEGER NOT NULL,
@@ -106,9 +129,9 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Наполнение таблиц базовыми дефолтными данными (Seed) по новой схеме
+/// Наполнение таблиц базовыми дефолтными данными (Seed) с правильной терминологией
 pub fn seed_default_data(conn: &Connection) -> Result<()> {
-    // --- 1. Дефолтная конфигурация портов ---
+    // --- 1. Дефолтная конфигурация веб-интерфейса консоли ---
     let cfg_count: i64 = conn.query_row("SELECT COUNT(*) FROM cfg_tab", [], |r| r.get(0))?;
     if cfg_count == 0 {
         conn.execute(
@@ -126,8 +149,7 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
         )?;
     }
 
-    // --- 3. Дефолтный модуль ---
-    // ИСПРАВЛЕНИЕ: Убрали вставку default_domain_id, поле name теперь гарантированно UNIQUE
+    // --- 3. Дефолтный модуль ядра ---
     let module_count: i64 = conn.query_row("SELECT COUNT(*) FROM module_tab", [], |r| r.get(0))?;
     if module_count == 0 {
         conn.execute(
@@ -137,7 +159,42 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
     }
     let default_module_id: i64 = conn.query_row("SELECT id FROM module_tab WHERE name = 'Core Auth'", [], |r| r.get(0))?;
 
-    // --- 4. Группы ролей ---
+    // --- 4. НАПОЛНЕНИЕ СЕРВИСОВ (Комплексные наборы автоматизации) ---
+    let svc_count: i64 = conn.query_row("SELECT COUNT(*) FROM services_tab", [], |r| r.get(0))?;
+    if svc_count == 0 {
+        let default_services = [
+            ("Backup & Rotation", "Пакет автоматического резервного копирования и ротации архивов"),
+            ("Health Monitor", "Сбор телеметрии, нагрузка на CPU и мониторинг дискового пространства"),
+            ("Network Diagnostics", "Утилиты проверки связности узлов и трассировки каналов"),
+        ];
+        for (name, desc) in default_services.iter() {
+            conn.execute("INSERT INTO services_tab (name, description) VALUES (?, ?)", [name, desc])?;
+        }
+    }
+
+    // --- 5. НАПОЛНЕНИЕ ПОРТОВ (Портативные скрипты) со связью к сервисам ---
+    let port_count: i64 = conn.query_row("SELECT COUNT(*) FROM ports_tab", [], |r| r.get(0))?;
+    if port_count == 0 {
+        // Получаем ID родительских сервисов для связки
+        let backup_svc_id: i64 = conn.query_row("SELECT id FROM services_tab WHERE name = 'Backup & Rotation'", [], |r| r.get(0))?;
+        let health_svc_id: i64 = conn.query_row("SELECT id FROM services_tab WHERE name = 'Health Monitor'", [], |r| r.get(0))?;
+
+        let default_ports = [
+            (backup_svc_id, "tar_compress.sh", "Bash-скрипт архивации целевых директорий бэкенда", "bash"),
+            (backup_svc_id, "clean_old_bak.sh", "Скрипт очистки дампов старше 14 дней", "bash"),
+            (health_svc_id, "disk_watchdog.sh", "Портированная утилита проверки свободного места", "bash"),
+            (health_svc_id, "get_cpu_load.ps1", "PowerShell скрипт замера мгновенной утилизации ядер", "powershell"),
+        ];
+
+        for (svc_id, name, desc, interp) in default_ports.iter() {
+            conn.execute(
+                "INSERT INTO ports_tab (service_id, name, description, interpreter) VALUES (?, ?, ?, ?)",
+                         (svc_id, name, desc, interp),
+            )?;
+        }
+    }
+
+    // --- 6. Группы ролей ---
     let group_count: i64 = conn.query_row("SELECT COUNT(*) FROM group_tab", [], |r| r.get(0))?;
     if group_count == 0 {
         let default_groups = [
@@ -151,23 +208,20 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
     let admin_group_id: i64 = conn.query_row("SELECT id FROM group_tab WHERE name = 'Администраторы'", [], |r| r.get(0))?;
     let user_group_id: i64 = conn.query_row("SELECT id FROM group_tab WHERE name = 'Пользователи'", [], |r| r.get(0))?;
 
-    // --- 5. Матрица прав (Permissions Matrix Sync) ---
+    // --- 7. Матрица прав ---
     let matrix_count: i64 = conn.query_row("SELECT COUNT(*) FROM permission_matrix_tab", [], |r| r.get(0))?;
     if matrix_count == 0 {
-        // Администраторы: Чтение (1) и Запись (1)
         conn.execute(
             "INSERT INTO permission_matrix_tab (group_id, module_id, can_read, can_write) VALUES (?, ?, 1, 1)",
                      [admin_group_id, default_module_id],
         )?;
-        // Пользователи: Только Чтение (1), Без записи (0)
         conn.execute(
             "INSERT INTO permission_matrix_tab (group_id, module_id, can_read, can_write) VALUES (?, ?, 1, 0)",
                      [user_group_id, default_module_id],
         )?;
     }
 
-    // --- 6. Пользователи ---
-    // Системный Администратор (admin)
+    // --- 8. Пользователи ---
     let admin_exists: i64 = conn.query_row("SELECT COUNT(*) FROM user_tab WHERE username = 'admin'", [], |r| r.get(0))?;
     if admin_exists == 0 {
         conn.execute(
