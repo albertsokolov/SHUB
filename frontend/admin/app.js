@@ -408,6 +408,29 @@ function handleHashRouter() {
             mip_modules.init();
             break;
         }
+        case "#ports": {
+            const portsLi = document.querySelector('[data-action="ports"]');
+            if (portsLi) portsLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Портированные скрипты (Ports)";
+            if (titleIcon) titleIcon.className = "icon icon-nic"; // Используем иконку сетевой карты
+
+            contentArea.innerHTML = mip_ports_components.render();
+            mip_ports.init();
+            break;
+        }
+        case "#services": {
+            const servicesLi = document.querySelector('[data-action="services"]');
+            if (servicesLi) servicesLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Сервисы автоматизации (Services)";
+            if (titleIcon) titleIcon.className = "icon icon-doc-gear"; // Шестеренка на документе
+
+            contentArea.innerHTML = mip_services_components.render();
+            mip_services.init();
+            break;
+        }
+
 
         case "#dashboard": {
             const dashLi = document.querySelector('[data-action="dashboard"]');

@@ -21,6 +21,8 @@ mod mip_group;
 mod mip_advoptions;
 mod mip_domains;
 mod mip_modules;
+mod mip_ports;
+mod mip_services;
 
 static APP_NAME: &str = "SHUB";
 static DB_PATH: Lazy<String> = Lazy::new(|| format!("{}.db", APP_NAME));
@@ -62,6 +64,8 @@ async fn main() {
     .nest("/mip-adv", mip_advoptions::router()) // Добавляем эндпоинты расширенных настроек
     .nest("/mip-d", mip_domains::router())
     .nest("/mip-m", mip_modules::router())
+    .nest("/mip-p", mip_ports::router())
+    .nest("/mip-s", mip_services::router())
     .with_state(db_state);
 
     let app = Router::new()
