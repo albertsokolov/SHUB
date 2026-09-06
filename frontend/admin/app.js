@@ -397,6 +397,17 @@ function handleHashRouter() {
             mip_advoptions.init();
             break;
         }
+        case "#modules": {
+            const moduleLi = document.querySelector('[data-action="modules"]');
+            if (moduleLi) moduleLi.classList.add("active");
+
+            if (titleText) titleText.innerText = "Modules & Services";
+            if (titleIcon) titleIcon.className = "icon icon-cloud-cfg"; // Облако конфигурации для модулей
+
+            contentArea.innerHTML = mip_modules_components.render();
+            mip_modules.init();
+            break;
+        }
 
         case "#dashboard": {
             const dashLi = document.querySelector('[data-action="dashboard"]');

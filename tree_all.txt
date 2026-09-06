@@ -23,6 +23,8 @@
 │   │   ├── mip_groups_api.js
 │   │   ├── mip_groups_companents.js
 │   │   ├── mip_groups.js
+│   │   ├── mip_modules_components.js
+│   │   ├── mip_modules.js
 │   │   ├── mip_styles.css
 │   │   ├── mip_users_companents.js
 │   │   ├── mip_users.js
@@ -99,7 +101,8 @@
 │   ├── mip_advoptions.rs
 │   ├── mip_domains.rs
 │   ├── mip_group.rs
+│   ├── mip_modules.rs
 │   └── mip_users.rs
 └── tree_all.txt
 
-20 directories, 83 files
+20 directories, 86 files
