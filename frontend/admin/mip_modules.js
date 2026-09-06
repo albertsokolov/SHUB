@@ -1,6 +1,6 @@
 /**
  * Контроллер управления MIP-панелью модулей (SHUB Core)
- * ДОБАВЛЕНО: Полноценная клиентская сортировка колонок Name и Description
+ * ИСПРАВЛЕН: Локальный вызов стейта mip_modules.currentSort.asc для стабильной сортировки колонок
  */
 const mip_modules = {
     async init() {
@@ -54,12 +54,12 @@ const mip_modules = {
                         arrowSpan.innerText = mip_modules.currentSort.asc ? " ▲" : " ▼";
                     }
 
-                    // Алгоритм безопасной сортировки массива объектов
+                    // ИСПРАВЛЕНО: Строгое использование локального стейта mip_modules для сортировки
                     modules.sort((a, b) => {
                         const valA = (sortField === "name" ? a.name : a.description) || "";
                         const valB = (sortField === "name" ? b.name : b.description) || "";
 
-                        return mip_groups.currentSort.asc
+                        return mip_modules.currentSort.asc
                         ? valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
                         : valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
                     });
