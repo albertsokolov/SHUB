@@ -27,23 +27,15 @@ pub struct AppConfig {
 }
 
 pub fn get_http_port(conn: &Connection) -> u16 {
-    conn.query_row("SELECT http_port FROM cfg_tab WHERE id = 1", [], |r| r.get(0)).unwrap_or(3000)
-}
-
-pub fn fetch_config(conn: &Connection) -> Result<AppConfig> {
     conn.query_row(
-        "SELECT id, http_port, https_port, https_status FROM cfg_tab WHERE id = 1",
+        "SELECT value FROM cfg_tab WHERE parameter = 'http'",
         [],
 
-        |row| {
-            Ok(AppConfig {
-                id: row.get(0)?,
-               http_port: row.get(1)?,
-               https_port: row.get(2)?,
-               https_status: row.get(3)?,
-            })
-        },
-    )
+        |r| {
+            let val_str: String = r.get(0)?;
+            Ok(val_str.parse::<u16>().unwrap_or(3000))
+        }
+    ).unwrap_or(3000)
 }
 
 pub fn fetch_all_groups(conn: &Connection) -> Result<Vec<Group>> {

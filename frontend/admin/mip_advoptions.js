@@ -1,5 +1,5 @@
 /**
- * Оптимизированный модуль управления Advanced Options (Диспетчер на флагах)
+ * Модуль управления Advanced Options (ОЖИВЛЕННЫЙ)
  */
 const mip_advoptions = {
     // Наша переменная отслеживания изменений (по умолчанию true - изменений нет)
@@ -35,11 +35,14 @@ const mip_advoptions = {
     </div>
     </div>`,
 
+    // Хранилище эталонного слепка данных, пришедшего с сервера (для отката по кнопке Reset)
+    serverBak: null,
+
     async init() {
         const wrapper = document.querySelector(".mip-panel-wrapper");
         if (!wrapper) return;
 
-        // 1. ИНТЕРАКТИВНОЕ ПЕРЕКЛЮЧЕНИЕ ТАБОВ (Без влияния на флаг изменений)
+        // 1. ИНТЕРАКТИВНОЕ ПЕРЕКЛЮЧЕНИЕ ТАБОВ
         const winTabs = wrapper.querySelectorAll("[data-adv-tab]");
         winTabs.forEach(tab => {
             tab.onclick = (e) => {
@@ -52,70 +55,115 @@ const mip_advoptions = {
             };
         });
 
-        // 2. ФУНКЦИЯ УПРАВЛЕНИЯ КНОПКАМИ НА ОСНОВЕ ПЕРЕМЕННОЙ CHK_CHNGES_STATE
+        // Клик по кнопке "Select Folder..." вызывает серверный проводник
+        const btnSelectDir = document.getElementById("adv-btn-select-store-dir");
+        if (btnSelectDir) {
+            btnSelectDir.onclick = () => {
+                const currentPathValue = document.getElementById("adv-store-path").value;
+                mip_advoptions_store.openDirectoryBrowser(currentPathValue);
+            };
+        }
+        // 2. ФУНКЦИЯ УПРАВЛЕНИЯ АКТИВНОСТЬЮ КНОПОК
         this.updateButtonsUI = () => {
             const btnApply = document.getElementById("adv-btn-apply");
             const btnReset = document.getElementById("adv-btn-reset");
-
             if (btnApply && btnReset) {
-                // Если chk_chnges_state === true -> изменений нет -> disabled = true (затенены)
-                // Если chk_chnges_state === false -> изменения есть -> disabled = false (активны)
                 btnApply.disabled = this.chk_chnges_state;
                 btnReset.disabled = this.chk_chnges_state;
             }
         };
 
-        // 3. ОБРАБОТЧИК ЛЮБОГО ВОЗДЕЙСТВИЯ НА КОНТРОЛЫ ЛЮБОЙ ВКЛАДКИ
+        // 3. ОБРАБОТЧИК ИЗМЕНЕНИЙ В ДЕРЕВЕ КОНТРОЛЛЕРОВ СИСТЕМЫ
         const onControlInput = () => {
-            // Зафиксировано воздействие на контролы -> переключаем флаг в false (форма грязная)
             this.chk_chnges_state = false;
             this.updateButtonsUI();
         };
 
-        // Навешиваем слушатели на центральный контейнер формы методом делегирования
         const container = document.getElementById("adv-main-container");
         if (container) {
             container.addEventListener("input", onControlInput);
             container.addEventListener("change", onControlInput);
         }
 
-        // Изначальный жесткий сброс состояния при загрузке: изменений нет (true)
+        // Изначальный жесткий сброс состояния кнопок
         this.chk_chnges_state = true;
         this.updateButtonsUI();
 
-        // Запрашиваем дефолтные настройки с бэкенда, чтобы заполнить поля
+        // 4. ОЖИВЛЕНО: ЗАПРОС ТЕКУЩИХ ЗНАЧЕНИЙ НАСТРОЕК ИЗ БАЗЫ ДАННЫХ
         try {
-            await fetch("/api/mip-adv/advoptions");
-        } catch (err) { console.error(err); }
+            const res = await fetch("/api/mip-adv/advoptions");
+            if (res.ok) {
+                const data = await res.json();
 
-        // КНОПКА RESET: Принудительно сбрасывает флаг в true и затеняет кнопки
+                // Сохраняем слепок данных во внутреннюю память для Reset
+                this.serverBak = {
+                    path: data.path,
+                    http_port: data.http_port,
+                    https_port: data.https_port,
+                    https_status: data.https_status,
+                    // Заполняем дефолтные флаги для исключения падений serialize
+                    search: false, soft: "1", soft_u: "GB", hard: "100", hard_u: "MB",
+                    quota: "90", quota_a: "Once", email: "admin@kapavto.by",
+                    cache: true, interval: "10"
+                };
+
+                // Распределяем реальные данные из БД по инпутам вкладок
+                mip_advoptions_misc.deserialize(this.serverBak);
+                mip_advoptions_store.deserialize(this.serverBak);
+            }
+        } catch (err) {
+            console.error("Ошибка загрузки конфигурации из БД:", err);
+        }
+
+        // КНОПКА RESET: Откатывает поля к эталонному слепку serverBak
         document.getElementById("adv-btn-reset").onclick = () => {
-            if (this.chk_chnges_state) return; // Если и так чистая, ничего не делаем
+            if (this.chk_chnges_state || !this.serverBak) return;
 
-            // Задаем жесткий дефолтный слепок для отката полей макета Kerio
-            const defaultBak = {
-                path: "/store/", search: false, soft: "1", soft_u: "GB",
-                hard: "100", hard_u: "MB", quota: "90", quota_a: "Once", email: "tyutyu",
-                cache: true, interval: "10"
-            };
+            mip_advoptions_misc.deserialize(this.serverBak);
+            mip_advoptions_store.deserialize(this.serverBak);
 
-            // Перерисовываем поля через десериализаторы обособленных вкладок
-            mip_advoptions_misc.deserialize(defaultBak);
-            mip_advoptions_store.deserialize(defaultBak);
-
-            // Фиксируем: воздействие аннулировано, изменений нет
             this.chk_chnges_state = true;
             this.updateButtonsUI();
         };
 
-        // КНОПКА APPLY: Применяет изменения, фиксирует состояние и затеняет кнопки
-        document.getElementById("adv-btn-apply").onclick = () => {
+        // КНОПКА APPLY: Отправляет измененный Key-Value JSON-пакет в SQLite
+        document.getElementById("adv-btn-apply").onclick = async () => {
             if (this.chk_chnges_state) return;
 
-            // Фиксируем: изменения применены, текущее состояние становится эталоном
-            this.chk_chnges_state = true;
-            this.updateButtonsUI();
-            alert("Настройки успешно сохранены!");
+            // Атомарно собираем данные со всех обособленных вкладок
+            const miscData = mip_advoptions_misc.serialize();
+            const storeData = mip_advoptions_store.serialize();
+
+            // Формируем плоский пакет под контракт бэкенда AdvOptionsResponse
+            const payload = {
+                path: storeData.path, // Наш инпут adv-store-path
+                http_port: "3000",    // Значения по умолчанию, пока не вывели инпуты портов в макет
+                https_port: "3001",
+                https_status: "off"
+            };
+
+            try {
+                const res = await fetch("/api/mip-adv/advoptions/save", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    // Обновляем локальный слепок бэкапа на новое сохраненное состояние
+                    this.serverBak.path = payload.path;
+
+                    this.chk_chnges_state = true;
+                    this.updateButtonsUI();
+                    alert("Настройки конфигурации успешно сохранены в БД!");
+                } else {
+                    alert("Ошибка сохранения настроек на стороне бэкенда.");
+                }
+            } catch (err) {
+                console.error("Сетевая ошибка сохранения параметров:", err);
+                alert("Не удалось сохранить конфигурацию: ошибка сети.");
+            }
         };
     },
 
