@@ -1,54 +1,76 @@
-use chrono::Local; // Для добавления точного времени в логи
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::sync::Mutex;
+use std::path::Path;
+use chrono::Local;
+use rusqlite::Connection;
 
-// Потокобезопасный мьютекс для синхронизации записи в один файл из разных потоков Axum
-static LOG_MUTEX: Mutex<()> = Mutex::new(());
+/// Внутренняя функция получения активного пути хранения из Key-Value таблицы cfg_tab.
+/// Если БД недоступна или запись отсутствует, откатывается на дефолтную папку "./store/"
+fn get_log_directory_from_db() -> String {
+    // Открываем локальное соединение с базой данных
+    if let Ok(conn) = Connection::open("SHUB.db") {
+        // Если база зашифрована SQLCipher, раскомментируйте строку ниже и укажите ваш ключ:
+        // let _ = conn.execute("PRAGMA key = 'ваш_ключ';", []);
 
-/// Инициализирует файл лога (очищает или создает пустой при старте, если необходимо)
-pub fn init_logger(app_name: &str) {
-    let file_name = format!("{}.log", app_name);
-    let _file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&file_name)
-        .expect("Не удалось инициализировать файл лога");
-        
-    info(app_name, "Система логирования успешно запущена.");
+        let query_res: Result<String, _> = conn.query_row(
+            "SELECT value FROM cfg_tab WHERE parameter = 'storage'",
+            [],
+
+            |r| r.get(0)
+        );
+
+        if let Ok(mut base_path) = query_res {
+            base_path = base_path.trim().to_string();
+            // Гарантируем, что путь заканчивается слешем
+            if !base_path.ends_with('/') && !base_path.ends_with('\\') {
+                base_path.push('/');
+            }
+            // Конкатенируем с целевой поддиректорией log/
+            return format!("{}log", base_path);
+        }
+    }
+    "./store/log".to_string()
 }
 
-/// Запись лога с уровнем INFO
-pub fn info(app_name: &str, message: &str) {
-    log(app_name, "INFO", message);
-}
+/// Универсальная функция записи системных логов на диск по новому динамическому пути
+pub fn write_to_log(level: &str, app_name: &str, message: &str) {
+    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+    let log_line = format!("[{}] [{}] [{}] {}\n", timestamp, level, app_name, message);
 
-/// Запись лога с уровнем WARN
-pub fn warn(app_name: &str, message: &str) {
-    log(app_name, "WARN", message);
-}
-
-/// Запись лога с уровнем ERROR
-pub fn error(app_name: &str, message: &str) {
-    log(app_name, "ERROR", message);
-}
-
-// Внутренний метод форматирования и записи
-fn log(app_name: &str, level: &str, message: &str) {
-    // Получаем текущее время в красивом формате
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    
-    // Формируем строку лога
-    let log_line = format!("[{}] [{}] {}\n", timestamp, level, message);
-
-    // Выводим в терминал (stdout)
+    // Дублируем вывод строки в консоль сервера (терминал cargo run)
     print!("{}", log_line);
 
-    // Блокируем поток для безопасной записи в файл
-    let _lock = LOG_MUTEX.lock().unwrap();
-    let file_name = format!("{}.log", app_name);
-    
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(file_name) {
-        let _ = file.write_all(log_line.as_bytes());
+    // 1. Динамически получаем актуальный путь к папке логов из БД cfg_tab
+    let log_dir_str = get_log_directory_from_db();
+    let log_dir = Path::new(&log_dir_str);
+
+    // 2. ЗАЩИТА: Автоматически создаем подкаталог \log, если админ переключил storage
+    if !log_dir.exists() {
+        let _ = fs::create_dir_all(log_dir);
     }
+
+    // 3. Формируем финальный абсолютный путь к файлу shub.log
+    let log_file_path = log_dir.join("shub.log");
+
+    // 4. Безопасно открываем дескриптор файла на дозапись (Append)
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open(log_file_path)
+        {
+            let _ = file.write_all(log_line.as_bytes());
+        }
+}
+
+pub fn info(app_name: &str, message: &str) {
+    write_to_log("INFO", app_name, message);
+}
+
+pub fn error(app_name: &str, message: &str) {
+    write_to_log("ERROR", app_name, message);
+}
+
+pub fn warn(app_name: &str, message: &str) {
+    write_to_log("WARN", app_name, message);
 }

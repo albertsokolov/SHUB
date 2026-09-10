@@ -43,7 +43,7 @@ struct LoginResponse {
 
 #[tokio::main]
 async fn main() {
-    logger::init_logger(APP_NAME);
+    //logger::init_logger(APP_NAME);
 
     let conn = Connection::open(&*DB_PATH).expect("Нет доступа к файлу БД");
     conn.pragma_update(None, "key", "12344").expect("Ошибка инициализации SQLCipher");
