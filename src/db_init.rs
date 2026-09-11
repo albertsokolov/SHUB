@@ -1,11 +1,14 @@
 use rusqlite::{Connection, Result};
 use std::env;
+use std::fs;
+use std::path::Path;
 
-/// Инициализация новой Key-Value структуры таблицы конфигурации автоматизации
+/// Инициализация структуры таблиц автоматизации и матрицы прав в БД SQLite/SQLCipher
 pub fn init_tables(conn: &Connection) -> Result<()> {
+    // Включаем поддержку внешних ключей в сессии SQLite
     conn.execute("PRAGMA foreign_keys = ON;", [])?;
 
-    // 1. Новая таблица конфигурации системы (cfg_tab) в формате Key-Value
+    // 1. Таблица конфигурации системы (cfg_tab) в формате Key-Value
     conn.execute(
         "CREATE TABLE IF NOT EXISTS cfg_tab (
             parameter TEXT PRIMARY KEY,
@@ -64,25 +67,25 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     [],
     )?;
 
-    // 6. Таблица сервисов (services_tab)
+    // 6. Таблица ПОРТОВ (ports_tab) — Портативные Bash/PowerShell скрипты и команды
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS services_tab (
+        "CREATE TABLE IF NOT EXISTS ports_tab (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
-            description TEXT
+            description TEXT,
+            interpreter TEXT -- 'bash', 'powershell', 'native_cmd'
     )",
     [],
     )?;
 
-    // 7. Таблица портов/скриптов (ports_tab)
+    // 7. Таблица СЕРВИСОВ (services_tab) — Наборы портов/скриптов
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS ports_tab (
+        "CREATE TABLE IF NOT EXISTS services_tab (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            service_id INTEGER,
-            name TEXT NOT NULL,
+            port_id INTEGER,
+            name TEXT NOT NULL UNIQUE,
             description TEXT,
-            interpreter TEXT,
-            FOREIGN KEY (service_id) REFERENCES services_tab(id) ON DELETE SET NULL
+            FOREIGN KEY (port_id) REFERENCES ports_tab(id) ON DELETE SET NULL
     )",
     [],
     )?;
@@ -122,26 +125,33 @@ pub fn init_tables(conn: &Connection) -> Result<()> {
     )",
     [],
     )?;
+    // 11. Таблица ПЛАНИРОВЩИКА ВРЕМЕНИ И ЗАДАЧ (time_tab) — ДОБАВЛЕНО
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS time_tab (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            cron_expression TEXT NOT NULL,
+            description TEXT
+    )",
+    [],
+    )?;
 
     Ok(())
 }
 
-/// Наполнение таблиц дефолтными данными с учетом новой Key-Value структуры
+/// Наполнение таблиц дефолтными данными со скорректированной структурой сервисов и созданием файлов портов
 pub fn seed_default_data(conn: &Connection) -> Result<()> {
-    // --- 1. Дефолтная инициализация параметров конфигурации (KeyValue) ---
+    // --- 1. Дефолтная конфигурация портов ---
     let mut stmt = conn.prepare("INSERT OR IGNORE INTO cfg_tab (parameter, value) VALUES (?, ?)")?;
-
     stmt.execute(["http", "3000"])?;
     stmt.execute(["https", "3001"])?;
     stmt.execute(["https_status", "off"])?;
 
-    // Вычисляем динамический program path запуска программы SHUB
     let current_dir = env::current_dir()
     .map(|p| p.to_string_lossy().into_owned())
     .unwrap_or_else(|_| ".".to_string());
     let default_storage_path = format!("{}/store/", current_dir);
-    // ДОБАВЛЕНО: Гарантируем физическое создание папки на диске, чтобы fs::canonicalize не падал
-    let _ = std::fs::create_dir_all(&default_storage_path);
+    let _ = fs::create_dir_all(&default_storage_path);
     stmt.execute(["storage", &default_storage_path])?;
     drop(stmt);
 
@@ -164,36 +174,62 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
     }
     let default_module_id: i64 = conn.query_row("SELECT id FROM module_tab WHERE name = 'Core Auth'", [], |r| r.get(0))?;
 
-    // --- 4. Наполнение сервисов ---
-    let svc_count: i64 = conn.query_row("SELECT COUNT(*) FROM services_tab", [], |r| r.get(0))?;
-    if svc_count == 0 {
-        let default_services = [
-            ("Backup & Rotation", "Пакет автоматического резервного копирования и ротации архивов"),
-            ("Health Monitor", "Сбор телеметрии, нагрузка на CPU и мониторинг дискового пространства"),
-            ("Network Diagnostics", "Утилиты проверки связности узлов и трассировки каналов"),
+    // --- 4. НАПОЛНЕНИЕ ПОРТОВ (Скриптов) В БД ---
+    let port_count: i64 = conn.query_row("SELECT COUNT(*) FROM ports_tab", [], |r| r.get(0))?;
+    if port_count == 0 {
+        let default_ports = [
+            ("tar_compress.sh", "Bash-скрипт архивации целевых директорий бэкенда", "bash"),
+            ("clean_old_bak.sh", "Скрипт очистки дампов старше 14 дней", "bash"),
+            ("disk_watchdog.sh", "Портированная утилита проверки свободного места", "bash"),
+            ("get_cpu_load.ps1", "PowerShell скрипт замера мгновенной утилизации ядер", "powershell"),
         ];
-        for (name, desc) in default_services.iter() {
-            conn.execute("INSERT INTO services_tab (name, description) VALUES (?, ?)", [name, desc])?;
+        for (name, desc, interp) in default_ports.iter() {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO ports_tab (name, description, interpreter) VALUES (?, ?, ?)",
+                                 (name, desc, interp),
+            );
         }
     }
 
-    // --- 5. Наполнение портов ---
-    let port_count: i64 = conn.query_row("SELECT COUNT(*) FROM ports_tab", [], |r| r.get(0))?;
-    if port_count == 0 {
-        let backup_svc_id: i64 = conn.query_row("SELECT id FROM services_tab WHERE name = 'Backup & Rotation'", [], |r| r.get(0))?;
-        let health_svc_id: i64 = conn.query_row("SELECT id FROM services_tab WHERE name = 'Health Monitor'", [], |r| r.get(0))?;
+    // --- ДОБАВЛЕНО: ФИЗИЧЕСКОЕ СОЗДАНИЕ ФАЙЛОВ-ЗАГЛУШЕК В КАТАЛОГЕ текущий_путь\Ports ---
+    let active_storage: String = conn.query_row(
+        "SELECT value FROM cfg_tab WHERE parameter = 'storage'",
+        [],
 
-        let default_ports = [
-            (backup_svc_id, "tar_compress.sh", "Bash-скрипт архивации целевых директорий бэкенда", "bash"),
-            (backup_svc_id, "clean_old_bak.sh", "Скрипт очистки дампов старше 14 дней", "bash"),
-            (health_svc_id, "disk_watchdog.sh", "Портированная утилита проверки свободного места", "bash"),
-            (health_svc_id, "get_cpu_load.ps1", "PowerShell скрипт замера мгновенной утилизации ядер", "powershell"),
+        |r| r.get(0)
+    ).unwrap_or(default_storage_path);
+
+    let ports_dir_path = Path::new(&active_storage).join("Ports");
+    if !ports_dir_path.exists() {
+        let _ = fs::create_dir_all(&ports_dir_path);
+    }
+
+    // Шаблоны кодов для файлов-заглушек
+    let bash_stub = "#!/bin/bash\n\necho \"[SHUB Port Engine] Running portable automation script...\"\necho \"Status: Success\"\nexit 0\n";
+    let ps_stub = "# [SHUB Port Engine] Running portable PowerShell script\nWrite-Output \"Status: Success\"\nExit 0\n";
+
+    let _ = fs::write(ports_dir_path.join("tar_compress.sh"), bash_stub);
+    let _ = fs::write(ports_dir_path.join("clean_old_bak.sh"), bash_stub);
+    let _ = fs::write(ports_dir_path.join("disk_watchdog.sh"), bash_stub);
+    let _ = fs::write(ports_dir_path.join("get_cpu_load.ps1"), ps_stub);
+
+    // Получаем ID только что созданных скриптов для связывания с сервисами
+    let p_tar_id: i64 = conn.query_row("SELECT id FROM ports_tab WHERE name = 'tar_compress.sh'", [], |r| r.get(0))?;
+    let p_watch_id: i64 = conn.query_row("SELECT id FROM ports_tab WHERE name = 'disk_watchdog.sh'", [], |r| r.get(0))?;
+
+    // --- 5. НАПОЛНЕНИЕ СЕРВИСОВ ---
+    let svc_count: i64 = conn.query_row("SELECT COUNT(*) FROM services_tab", [], |r| r.get(0))?;
+    if svc_count == 0 {
+        let default_services = [
+            (Some(p_tar_id), "Backup & Rotation", "Пакет автоматического резервного копирования и ротации архивов"),
+            (Some(p_watch_id), "Health Monitor", "Сбор телеметрии, нагрузка на CPU и мониторинг дискового пространства"),
+            (None, "Network Diagnostics", "Утилиты проверки связности узлов и трассировки каналов"),
         ];
-        for (svc_id, name, desc, interp) in default_ports.iter() {
-            conn.execute(
-                "INSERT INTO ports_tab (service_id, name, description, interpreter) VALUES (?, ?, ?, ?)",
-                         (svc_id, name, desc, interp),
-            )?;
+        for (port_id, name, desc) in default_services.iter() {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO services_tab (port_id, name, description) VALUES (?, ?, ?)",
+                                 (port_id, name, desc),
+            );
         }
     }
 
@@ -205,7 +241,7 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
             ("Пользователи", "Обычные учетные записи сотрудников с базовыми правами чтения"),
         ];
         for (name, desc) in default_groups.iter() {
-            conn.execute("INSERT INTO group_tab (name, description) VALUES (?, ?)", [name, desc])?;
+            let _ = conn.execute("INSERT INTO group_tab (name, description) VALUES (?, ?)", [name, desc]);
         }
     }
     let admin_group_id: i64 = conn.query_row("SELECT id FROM group_tab WHERE name = 'Администраторы'", [], |r| r.get(0))?;
@@ -214,35 +250,50 @@ pub fn seed_default_data(conn: &Connection) -> Result<()> {
     // --- 7. Матрица прав ---
     let matrix_count: i64 = conn.query_row("SELECT COUNT(*) FROM permission_matrix_tab", [], |r| r.get(0))?;
     if matrix_count == 0 {
-        conn.execute(
+        let _ = conn.execute(
             "INSERT INTO permission_matrix_tab (group_id, module_id, can_read, can_write) VALUES (?, ?, 1, 1)",
-                     [admin_group_id, default_module_id],
-        )?;
-        conn.execute(
+                             [admin_group_id, default_module_id],
+        );
+        let _ = conn.execute(
             "INSERT INTO permission_matrix_tab (group_id, module_id, can_read, can_write) VALUES (?, ?, 1, 0)",
-                     [user_group_id, default_module_id],
-        )?;
+                             [user_group_id, default_module_id],
+        );
     }
 
     // --- 8. Пользователи ---
     let admin_exists: i64 = conn.query_row("SELECT COUNT(*) FROM user_tab WHERE username = 'admin'", [], |r| r.get(0))?;
     if admin_exists == 0 {
-        conn.execute(
+        let _ = conn.execute(
             "INSERT INTO user_tab (username, fullname, email, description, password, enabled) VALUES (?, ?, ?, ?, ?, 1)",
-                     ("admin", "Иван Иванов", "admin@kapavto.by", "Системный администратор", "12344"),
+                             ("admin", "Иван Иванов", "admin@kapavto.by", "Системный администратор", "12344"),
         )?;
         let new_admin_id: i64 = conn.query_row("SELECT id FROM user_tab WHERE username = 'admin'", [], |r| r.get(0))?;
-        conn.execute("INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)", [new_admin_id, admin_group_id])?;
+        let _ = conn.execute("INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)", [new_admin_id, admin_group_id]);
     }
 
     let user_exists: i64 = conn.query_row("SELECT COUNT(*) FROM user_tab WHERE username = 'user'", [], |r| r.get(0))?;
     if user_exists == 0 {
-        conn.execute(
+        let _ = conn.execute(
             "INSERT INTO user_tab (username, fullname, email, description, password, enabled) VALUES (?, ?, ?, ?, ?, 1)",
-                     ("user", "Петр Петров", "petrov@kapavto.by", "Менеджер", "12344"),
+                             ("user", "Петр Петров", "petrov@kapavto.by", "Менеджер", "12344"),
         )?;
         let new_user_id: i64 = conn.query_row("SELECT id FROM user_tab WHERE username = 'user'", [], |r| r.get(0))?;
-        conn.execute("INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)", [new_user_id, user_group_id])?;
+        let _ = conn.execute("INSERT INTO member_tab (user_id, group_id) VALUES (?, ?)", [new_user_id, user_group_id]);
+    }
+    // --- 9. НАПОЛНЕНИЕ ТРИГГЕРОВ ПЛАНИРОВЩИКА (Time Tasks Seed) — ДОБАВЛЕНО ---
+    let time_count: i64 = conn.query_row("SELECT COUNT(*) FROM time_tab", [], |r| r.get(0))?;
+    if time_count == 0 {
+        let default_tasks = [
+            ("Nightly Backup Trigger", "0 0 2 * * ?", "Запуск ночного резервного копирования в 02:00 ежедневно"),
+            ("Hourly Telemetry Sync", "0 0 * * * ?", "Ежечасный сбор системных метрик и логов с агентов"),
+            ("Weekly Database Cleanup", "0 0 3 ? * SUN", "Очистка устаревших дампов каждую неделю в воскресенье"),
+        ];
+        for (name, cron, desc) in default_tasks.iter() {
+            conn.execute(
+                "INSERT INTO time_tab (name, cron_expression, description) VALUES (?, ?, ?)",
+                         (name, cron, desc),
+            )?;
+        }
     }
 
     Ok(())

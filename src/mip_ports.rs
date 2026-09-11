@@ -27,7 +27,6 @@ pub struct MipPort {
     pub name: String,
     pub description: String,
     pub interpreter: String,
-    pub service_name: String,
 }
 
 #[derive(Deserialize)]
@@ -35,7 +34,6 @@ pub struct CreatePortRequest {
     pub name: String,
     pub description: String,
     pub interpreter: String,
-    pub service_id: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -49,7 +47,7 @@ pub struct PortActionResponse {
     pub message: String,
 }
 
-// Получение списка всех портов (скриптов) с JOIN к таблице сервисов
+// ИСПРАВЛЕНО: Чистая выборка плоского списка портов (скриптов) без удаления колонки service_id
 pub async fn get_ports_handler(
     State(db): State<DbState>,
                                cookies: Cookies,
@@ -58,15 +56,16 @@ pub async fn get_ports_handler(
         return (StatusCode::FORBIDDEN, "Access Denied").into_response();
     }
 
-    let conn = db.lock().unwrap();
-    let mut stmt = conn
-    .prepare(
-        "SELECT p.id, p.name, p.description, p.interpreter, COALESCE(s.name, '—')
-    FROM ports_tab p
-    LEFT JOIN services_tab s ON p.service_id = s.id
-    ORDER BY p.name ASC"
-    )
-    .unwrap();
+    // Защищаем выполнение через безопасный lock() без паники при Poison
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let mut stmt = match conn.prepare("SELECT id, name, description, interpreter FROM ports_tab ORDER BY name ASC") {
+        Ok(s) => s,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    };
 
     let port_iter = stmt
     .query_map([], |row| {
@@ -75,7 +74,6 @@ pub async fn get_ports_handler(
            name: row.get(1)?,
            description: row.get::<_, Option<String>>(2)?.unwrap_or_else(|| "—".to_string()),
            interpreter: row.get(3)?,
-           service_name: row.get(4)?,
         })
     })
     .unwrap();
@@ -105,10 +103,14 @@ pub async fn add_port_handler(
         return Json(PortActionResponse { success: false, message: "Имя скрипта не может быть пустым".to_string() }).into_response();
     }
 
-    let conn = db.lock().unwrap();
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     match conn.execute(
-        "INSERT INTO ports_tab (service_id, name, description, interpreter) VALUES (?, ?, ?, ?)",
-                       (payload.service_id, &port_name, &payload.description, &payload.interpreter),
+        "INSERT INTO ports_tab (name, description, interpreter) VALUES (?, ?, ?)",
+                       (&port_name, &payload.description, &payload.interpreter),
     ) {
         Ok(_) => {
             logger::info(APP_NAME, &format!("Успешно портирован скрипт автоматизации: {}", port_name));
@@ -128,7 +130,11 @@ pub async fn delete_port_handler(
         return (StatusCode::FORBIDDEN, "Access Denied").into_response();
     }
 
-    let conn = db.lock().unwrap();
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     match conn.execute("DELETE FROM ports_tab WHERE id = ?", [payload.id]) {
         Ok(rows) if rows > 0 => {
             logger::info(APP_NAME, &format!("Удален скрипт/порт автоматизации ID {}", payload.id));

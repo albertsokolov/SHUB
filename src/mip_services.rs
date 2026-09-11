@@ -24,14 +24,17 @@ pub fn router() -> Router<DbState> {
 #[derive(Serialize)]
 pub struct MipService {
     pub id: i64,
+    pub port_id: Option<i64>,
     pub name: String,
     pub description: String,
+    pub port_name: String,
 }
 
 #[derive(Deserialize)]
 pub struct CreateServiceRequest {
     pub name: String,
     pub description: String,
+    pub port_id: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -45,7 +48,7 @@ pub struct ServiceActionResponse {
     pub message: String,
 }
 
-// Получение списка всех сервисов
+// Получение списка всех сервисов с JOIN к портативным скриптам (ports_tab)
 pub async fn get_services_handler(
     State(db): State<DbState>,
                                   cookies: Cookies,
@@ -54,17 +57,28 @@ pub async fn get_services_handler(
         return (StatusCode::FORBIDDEN, "Access Denied").into_response();
     }
 
-    let conn = db.lock().unwrap();
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     let mut stmt = conn
-    .prepare("SELECT id, name, description FROM services_tab ORDER BY name ASC")
+    .prepare(
+        "SELECT s.id, s.port_id, s.name, s.description, COALESCE(p.name, '—')
+    FROM services_tab s
+    LEFT JOIN ports_tab p ON s.port_id = p.id
+    ORDER BY s.name ASC"
+    )
     .unwrap();
 
     let svc_iter = stmt
     .query_map([], |row| {
         Ok(MipService {
             id: row.get(0)?,
-           name: row.get(1)?,
-           description: row.get::<_, Option<String>>(2)?.unwrap_or_else(|| "—".to_string()),
+           port_id: row.get(1)?,
+           name: row.get(2)?,
+           description: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "—".to_string()),
+           port_name: row.get(4)?,
         })
     })
     .unwrap();
@@ -79,7 +93,7 @@ pub async fn get_services_handler(
     Json(services).into_response()
 }
 
-// Добавление нового сервиса
+// Добавление или обновление сервиса (INSERT OR REPLACE)
 pub async fn add_service_handler(
     State(db): State<DbState>,
                                  cookies: Cookies,
@@ -94,14 +108,18 @@ pub async fn add_service_handler(
         return Json(ServiceActionResponse { success: false, message: "Имя сервиса не может быть пустым".to_string() }).into_response();
     }
 
-    let conn = db.lock().unwrap();
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     match conn.execute(
-        "INSERT INTO services_tab (name, description) VALUES (?, ?)",
-                       (&svc_name, &payload.description),
+        "INSERT OR REPLACE INTO services_tab (port_id, name, description) VALUES (?, ?, ?)",
+                       (payload.port_id, &svc_name, &payload.description),
     ) {
         Ok(_) => {
-            logger::info(APP_NAME, &format!("Добавлен новый сервис автоматизации: {}", svc_name));
-            Json(ServiceActionResponse { success: true, message: "Service added".to_string() }).into_response()
+            logger::info(APP_NAME, &format!("Сохранена конфигурация сервиса автоматизации: {}", svc_name));
+            Json(ServiceActionResponse { success: true, message: "Service saved".to_string() }).into_response()
         },
         Err(e) => Json(ServiceActionResponse { success: false, message: format!("Ошибка базы данных: {}", e) }).into_response(),
     }
@@ -117,9 +135,11 @@ pub async fn delete_service_handler(
         return (StatusCode::FORBIDDEN, "Access Denied").into_response();
     }
 
-    let conn = db.lock().unwrap();
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
 
-    // При удалении сервиса, связанные порты в ports_tab получат service_id = NULL благодаря ON DELETE SET NULL
     match conn.execute("DELETE FROM services_tab WHERE id = ?", [payload.id]) {
         Ok(rows) if rows > 0 => {
             logger::info(APP_NAME, &format!("Удален сервис автоматизации ID {}", payload.id));

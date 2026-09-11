@@ -8,6 +8,7 @@ const mp_configuration = {
         <li data-action="services"><span class="icon icon-doc-gear"></span>Services</li>
         <li data-action="ports"><span class="icon icon-nic"></span>Ports</li>
         <li data-action="advancedOptions"><span class="icon icon-tools"></span>Advanced Options</li>
+        <li data-action="timeRanges"><span class="icon icon-doc-warn"></span>Time Ranges</li>
         </ul>
         </div>
         `;
