@@ -30,6 +30,7 @@
 │   │   ├── mip_services_components.js
 │   │   ├── mip_services.js
 │   │   ├── mip_styles.css
+│   │   ├── mip_time_components.js
 │   │   ├── mip_users_companents.js
 │   │   ├── mip_users.js
 │   │   ├── mp_accounts.js
@@ -108,7 +109,8 @@
 │   ├── mip_modules.rs
 │   ├── mip_ports.rs
 │   ├── mip_services.rs
+│   ├── mip_time.rs
 │   └── mip_users.rs
 └── tree_all.txt
 
-20 directories, 92 files
+20 directories, 94 files

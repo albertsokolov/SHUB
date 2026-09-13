@@ -1,61 +1,157 @@
-/**
- * Компонент отрисовки GUI для MIP-панели планирования времени (SHUB Core)
- */
-const mip_time_components = {
-    render: () => `
-    <div class="mip-panel-wrapper">
-    <div style="padding: 10px 0; font-family: Tahoma, sans-serif; font-size:12px; color:#333;">
-    Временные интервалы выполнения и расписание задач (Time Tasks):
-    </div>
-    <div class="mip-table-container">
-    <table class="mip-grid">
-    <thead>
-    <tr id="mip-time-th-sort-row">
-    <th style="width:40%; cursor:pointer; user-select:none;" data-sort="name">Task Name <span class="sort-arrow"></span></th>
-    <th style="width:25%; cursor:pointer; user-select:none;" data-sort="cron">Cron Expression <span class="sort-arrow"></span></th>
-    <th style="width:35%; cursor:pointer; user-select:none;" data-sort="desc">Description <span class="sort-arrow"></span></th>
-    </tr>
-    </thead>
-    <tbody id="mip-time-tbody"></tbody>
-    </table>
-    </div>
-    <div class="mip-action-bar" style="padding-left:0; padding-right:0;">
-    <div class="mip-btn-group" id="mip-time-actions">
-    <button class="mip-btn" data-act="add" style="font-weight:bold; width:90px">Add...</button>
-    <button class="mip-btn" data-act="edit" style="width:80px">Edit...</button>
-    <button class="mip-btn" data-act="remove" style="width:80px">Remove</button>
-    </div>
-    </div>
-    </div>`,
-
-    renderTimeWindowForm: (name = "", cron = "", desc = "") => `
-    <ul class="x-tab-strip" style="margin-top:0; margin-bottom:15px; flex-direction:row; height:24px; width:100%; border-bottom:1px solid #99bbe8; list-style:none; padding:0; display:flex;">
-    <li class="active" data-win-tab="general" style="background:none; width:70px; height:23px; text-align:center; line-height:23px; border:1px solid #99bbe8; border-bottom:none; border-radius:3px 3px 0 0; cursor:pointer;">General</li>
-    <li data-win-tab="cron" style="background:none; width:70px; height:23px; text-align:center; line-height:23px; border:1px solid transparent; border-bottom:none; border-radius:3px 3px 0 0; cursor:pointer;">Cron Specs</li>
-    </ul>
-
-    <div id="w-tab-general" class="win-tab-content" style="height:180px; display:flex; flex-direction:column; gap:12px; padding-top:5px">
-    <div class="mip-form-group">
-    <label style="width:110px; display:inline-block;">Task Name:</label>
-    <input type="text" id="mt-name" class="mip-form-input" style="flex:1;" value="${name}" autocomplete="off">
-    </div>
-    <div class="mip-form-group">
-    <label style="width:110px; display:inline-block;">Description:</label>
-    <input type="text" id="mt-desc" class="mip-form-input" style="flex:1;" value="${desc}" autocomplete="off">
-    </div>
-    </div>
-
-    <div id="w-tab-cron" class="win-tab-content" style="display:none; height:180px; box-sizing:border-box; padding-top:5px">
-    <div class="mip-form-group">
-    <label style="width:110px; display:inline-block;">Expression:</label>
-    <input type="text" id="mt-cron" class="mip-form-input" style="flex:1; font-family:monospace;" value="${cron || '0 0 * * * ?'}" autocomplete="off">
-    </div>
-    <div style="margin-top:15px; color:#555; background:#f4f7fb; padding:8px; border:1px solid #a3bae9; border-radius:3px; font-size:11px; line-height:14px;">
-    ℹ Формат: Секунды Минуты Часы Дни Месяцы Дни_недели.
-    </div>
-    </div>`,
-
-    renderConfirmDelete: (name) => `
-    <div class="mip-confirm-icon-question">?</div>
-    <div class="mip-confirm-text">Удалить правило планировщика "${name}"?</div>`
+use axum::{
+    extract::State,
+    response::IntoResponse,
+    routing::{get, post},
+    http::StatusCode,
+    Json, Router,
 };
+use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
+use rusqlite::Connection;
+use tower_cookies::Cookies;
+use crate::logger;
+
+type DbState = Arc<Mutex<Connection>>;
+static APP_NAME: &str = "SHUB";
+
+pub fn router() -> Router<DbState> {
+    Router::new()
+    .route("/time-tasks", get(get_time_tasks_handler))
+    .route("/time-tasks/add", post(add_time_task_handler))
+    .route("/time-tasks/remove", post(delete_time_task_handler))
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TimeTask {
+    pub id: i64,
+    pub name: String,
+    pub cron_expression: String,
+    pub description: String,
+}
+
+#[derive(Deserialize)]
+pub struct CreateTimeTaskRequest {
+    pub id: Option<i64>, // Присутствует, если выполняется редактирование (UPDATE)
+    pub name: String,
+    pub cron_expression: String,
+    pub description: String,
+}
+
+#[derive(Deserialize)]
+pub struct DeleteTimeTaskRequest {
+    pub id: i64,
+}
+
+#[derive(Serialize)]
+pub struct TimeActionResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+// Получение списка всех задач планировщика
+pub async fn get_time_tasks_handler(
+    State(db): State<DbState>,
+                                    cookies: Cookies,
+) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let mut stmt = conn
+    .prepare("SELECT id, name, cron_expression, description FROM time_tab ORDER BY name ASC")
+    .unwrap();
+
+    let task_iter = stmt
+    .query_map([], |row| {
+        Ok(TimeTask {
+            id: row.get(0)?,
+           name: row.get(1)?,
+           cron_expression: row.get(2)?,
+           description: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "—".to_string()),
+        })
+    })
+    .unwrap();
+
+    let mut tasks = Vec::new();
+    for task in task_iter {
+        if let Ok(t) = task {
+            tasks.push(t);
+        }
+    }
+
+    Json(tasks).into_response()
+}
+
+// Добавление или обновление задачи планировщика (Точечный UPDATE/INSERT)
+pub async fn add_time_task_handler(
+    State(db): State<DbState>,
+                                   cookies: Cookies,
+                                   Json(payload): Json<CreateTimeTaskRequest>,
+) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
+    let task_name = payload.name.trim().to_string();
+    let cron_expr = payload.cron_expression.trim().to_string();
+    if task_name.is_empty() || cron_expr.is_empty() {
+        return Json(TimeActionResponse { success: false, message: "Имя и Cron-выражение обязательны!".to_string() }).into_response();
+    }
+
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    let result = if let Some(task_id) = payload.id {
+        // Выполняем UPDATE, если редактируем старую запись
+        conn.execute(
+            "UPDATE time_tab SET name = ?, cron_expression = ?, description = ? WHERE id = ?",
+            (&task_name, &cron_expr, &payload.description, task_id),
+        )
+    } else {
+        // Выполняем INSERT, если создаем новую
+        conn.execute(
+            "INSERT INTO time_tab (name, cron_expression, description) VALUES (?, ?, ?)",
+                     (&task_name, &cron_expr, &payload.description),
+        )
+    };
+
+    match result {
+        Ok(_) => {
+            logger::info(APP_NAME, &format!("Конфигурация планировщика успешно сохранена: {}", task_name));
+            Json(TimeActionResponse { success: true, message: "Task saved successfully".to_string() }).into_response()
+        },
+        Err(e) => Json(TimeActionResponse { success: false, message: format!("Ошибка базы данных: {}", e) }).into_response(),
+    }
+}
+
+// Удаление задачи планировщика
+pub async fn delete_time_task_handler(
+    State(db): State<DbState>,
+                                      cookies: Cookies,
+                                      Json(payload): Json<DeleteTimeTaskRequest>,
+) -> impl IntoResponse {
+    if cookies.get("admin_token").is_none() {
+        return (StatusCode::FORBIDDEN, "Access Denied").into_response();
+    }
+
+    let conn = match db.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    match conn.execute("DELETE FROM time_tab WHERE id = ?", [payload.id]) {
+        Ok(rows) if rows > 0 => {
+            logger::info(APP_NAME, &format!("Удалена задача планировщика ID {}", payload.id));
+            Json(TimeActionResponse { success: true, message: "Task removed".to_string() }).into_response()
+        },
+        Ok(_) => Json(TimeActionResponse { success: false, message: "Задача не найдена".to_string() }).into_response(),
+        Err(e) => Json(TimeActionResponse { success: false, message: e.to_string() }).into_response(),
+    }
+}

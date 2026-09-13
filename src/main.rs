@@ -23,6 +23,7 @@ mod mip_domains;
 mod mip_modules;
 mod mip_ports;
 mod mip_services;
+mod mip_time;
 
 static APP_NAME: &str = "SHUB";
 static DB_PATH: Lazy<String> = Lazy::new(|| format!("{}.db", APP_NAME));
@@ -66,6 +67,7 @@ async fn main() {
     .nest("/mip-m", mip_modules::router())
     .nest("/mip-p", mip_ports::router())
     .nest("/mip-s", mip_services::router())
+    .nest("/mip-t", mip_time::router())
     .with_state(db_state);
 
     let app = Router::new()
